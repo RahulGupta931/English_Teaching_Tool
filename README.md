@@ -156,8 +156,9 @@ These must be in place before real users arrive.
 ## Development
 
 ```
-apps/api   FastAPI backend (/v1 endpoints)
-apps/web   Next.js web app
+apps/api     FastAPI backend (/v1 endpoints)
+apps/web     Next.js web app
+apps/mobile  React Native (Expo) app, same API and sign-in (see apps/mobile/README.md)
 ```
 
 **API** (first time: `cd apps/api`, `python -m venv .venv`, `.venv\Scripts\pip install -r requirements.txt`, copy `.env.example` to `.env` and fill in the Azure and OpenAI keys):

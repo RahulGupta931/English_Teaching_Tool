@@ -9,6 +9,7 @@ export const supabase =
   url && key
     ? createClient(url, key, {
         // Phones have no localStorage; keep the session in AsyncStorage so users stay signed in.
-        auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
+        // PKCE: Google sign-in returns a ?code= to the app's deep link, exchanged for a session.
+        auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false, flowType: "pkce" },
       })
     : null;
