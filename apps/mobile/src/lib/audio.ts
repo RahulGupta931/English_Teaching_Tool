@@ -2,14 +2,35 @@ import { createAudioPlayer, requestRecordingPermissionsAsync, setAudioModeAsync,
 import { File, Paths } from "expo-file-system";
 import * as Speech from "expo-speech";
 import { useEffect, useRef, useState } from "react";
+import { Platform } from "react-native";
 
 import { encodeWav, RATE, toMono } from "./wav";
 
 /** Mono 16-bit samples at `rate` -> 16 kHz WAV file in the cache. Returns its uri. */
 function writeWav(samples: Int16Array, rate: number, maxSeconds: number): string {
+  if (Platform.OS === "web") return URL.createObjectURL(new Blob([encodeWav(samples, rate, maxSeconds) as BlobPart], { type: "audio/wav" }));
   const file = new File(Paths.cache, `rec-${Date.now()}.wav`);
   file.write(encodeWav(samples, rate, maxSeconds));
   return file.uri;
+}
+
+/** Browser mic capture (expo-audio has no audio stream on web). Feeds 16-bit mono chunks; returns a stop function. */
+async function startWebCapture(onSamples: (mono: Int16Array, rate: number) => void): Promise<() => void> {
+  const media = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const ctx = new AudioContext();
+  const source = ctx.createMediaStreamSource(media);
+  // shortcut: ScriptProcessorNode is deprecated but needs no worklet file; switch to AudioWorklet (like apps/web) if a browser drops it.
+  const node = ctx.createScriptProcessor(4096, 1, 1);
+  node.onaudioprocess = (e) =>
+    onSamples(Int16Array.from(e.inputBuffer.getChannelData(0), (x) => Math.max(-1, Math.min(1, x)) * 0x7fff), ctx.sampleRate);
+  source.connect(node);
+  node.connect(ctx.destination); // outputs silence; keeps the node running
+  return () => {
+    source.disconnect();
+    node.disconnect();
+    media.getTracks().forEach((t) => t.stop());
+    void ctx.close();
+  };
 }
 
 const rms = (s: Int16Array) => Math.sqrt(s.reduce((n, x) => n + x * x, 0) / Math.max(1, s.length)) / 32768;
@@ -42,35 +63,38 @@ export function useMic({ maxSeconds, onWav, onError, handsFree, onSilence }: Mic
     cb.current = { onWav, onError, onSilence };
   });
 
+  const stopWeb = useRef<(() => void) | null>(null);
+
+  function onSamples(mono: Int16Array, rate: number) {
+    const s = st.current;
+    if (!s.on) return;
+    s.rate = rate;
+    s.chunks.push(mono);
+    const dt = mono.length / rate;
+    const lvl = rms(mono);
+    s.elapsed += dt;
+    setSeconds(s.elapsed);
+    setLevels((l) => [...l.slice(1), Math.max(0.1, Math.min(1, lvl * 8))]);
+    if (s.elapsed >= maxSeconds) return void end(true);
+    if (!handsFree) return;
+    if (s.elapsed < CALIBRATE_SECONDS) {
+      s.noise = (s.noise * s.noiseN + lvl) / ++s.noiseN;
+      return;
+    }
+    if (lvl > Math.max(MIN_LEVEL, s.noise * 3)) {
+      s.loud += dt;
+      s.lastLoud = s.elapsed;
+    }
+    const heard = s.loud >= SPEECH_SECONDS;
+    if (heard && s.elapsed - s.lastLoud > END_SILENCE_SECONDS) end(true);
+    else if (!heard && s.elapsed > NO_SPEECH_SECONDS) end(false).then(() => cb.current.onSilence?.());
+  }
+
   const { stream } = useAudioStream({
     sampleRate: RATE,
     channels: 1,
     encoding: "int16",
-    onBuffer: (b) => {
-      const s = st.current;
-      if (!s.on) return;
-      const mono = toMono(b.data, b.channels);
-      s.rate = b.sampleRate;
-      s.chunks.push(mono);
-      const dt = mono.length / b.sampleRate;
-      const lvl = rms(mono);
-      s.elapsed += dt;
-      setSeconds(s.elapsed);
-      setLevels((l) => [...l.slice(1), Math.max(0.1, Math.min(1, lvl * 8))]);
-      if (s.elapsed >= maxSeconds) return void end(true);
-      if (!handsFree) return;
-      if (s.elapsed < CALIBRATE_SECONDS) {
-        s.noise = (s.noise * s.noiseN + lvl) / ++s.noiseN;
-        return;
-      }
-      if (lvl > Math.max(MIN_LEVEL, s.noise * 3)) {
-        s.loud += dt;
-        s.lastLoud = s.elapsed;
-      }
-      const heard = s.loud >= SPEECH_SECONDS;
-      if (heard && s.elapsed - s.lastLoud > END_SILENCE_SECONDS) end(true);
-      else if (!heard && s.elapsed > NO_SPEECH_SECONDS) end(false).then(() => cb.current.onSilence?.());
-    },
+    onBuffer: (b) => onSamples(toMono(b.data, b.channels), b.sampleRate),
   });
 
   async function start() {
@@ -82,7 +106,9 @@ export function useMic({ maxSeconds, onWav, onError, handsFree, onSilence }: Mic
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       st.current = { chunks: [], rate: RATE, elapsed: 0, noise: 0, noiseN: 0, loud: 0, lastLoud: 0, on: true };
       setSeconds(0);
-      await stream.start();
+      // expo-audio's web build returns a null stream, so the browser records through Web Audio instead.
+      if (stream) await stream.start();
+      else stopWeb.current = await startWebCapture(onSamples);
       setRecording(true);
     } catch (e) {
       st.current.on = false;
@@ -94,7 +120,9 @@ export function useMic({ maxSeconds, onWav, onError, handsFree, onSilence }: Mic
     const s = st.current;
     if (!s.on) return;
     s.on = false;
-    stream.stop();
+    stream?.stop();
+    stopWeb.current?.();
+    stopWeb.current = null;
     setRecording(false);
     // Back to normal playback, so replies come from the loudspeaker rather than the earpiece.
     await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});

@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+
 import { supabase } from "./supabase";
 
 // Same FastAPI backend as the web app. On a phone, localhost is the phone itself: use your PC's LAN IP or the deployed URL.
@@ -33,10 +35,14 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const postJson = <T>(path: string, data: unknown) => api<T>(path, { method: "POST", body: JSON.stringify(data) });
 
-/** Upload files (recordings, resume) as multipart form fields; React Native sends a local file from its uri. */
-export function postFiles<T>(path: string, files: Record<string, { uri: string; name: string; type: string }>, fields: Record<string, string> = {}) {
+/** Upload files (recordings, resume) as multipart form fields; React Native sends a local file from its uri,
+ *  the browser needs the bytes as a Blob. */
+export async function postFiles<T>(path: string, files: Record<string, { uri: string; name: string; type: string }>, fields: Record<string, string> = {}) {
   const form = new FormData();
-  Object.entries(files).forEach(([k, f]) => form.append(k, f as unknown as Blob));
+  for (const [k, f] of Object.entries(files)) {
+    if (Platform.OS === "web") form.append(k, await (await fetch(f.uri)).blob(), f.name);
+    else form.append(k, f as unknown as Blob);
+  }
   Object.entries(fields).forEach(([k, v]) => form.append(k, v));
   return api<T>(path, { method: "POST", body: form });
 }
