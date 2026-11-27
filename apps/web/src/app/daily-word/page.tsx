@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, Delete, LoaderCircle, Share2, Sparkles, Volume2, X } from "lucide-react";
+import { ActivityAside } from "@/components/ActivityAside";
 import { RecordButton } from "@/components/RecordButton";
 import { Page, PageHeader, cn } from "@/components/ui";
 import { Badge } from "@/components/ui/badge";
@@ -258,7 +259,7 @@ export default function DailyWord() {
                 <ol className="flex flex-col gap-3 text-sm text-fg-2">
                   {[
                     "Type any five-letter word and press Guess.",
-                    "Green means the letter is in the right place; yellow means it's in the word but somewhere else.",
+                    "Green means the letter is in the right place; orange means it's in the word but somewhere else.",
                     "Grey letters aren't in the word at all. Use the keyboard colours to plan your next guess.",
                     "After the game, say a sentence with the word for bonus XP.",
                   ].map((t, i) => (
@@ -271,9 +272,56 @@ export default function DailyWord() {
               </CardContent>
             </Card>
           )}
+
+          {!state.finished && state.guesses.length > 0 && <LettersCard letters={letters} />}
+
+          <ActivityAside
+            kind="daily_word"
+            tips={[
+              "Start with a word that has common letters, like ARISE or STONE.",
+              "Don't reuse grey letters: every guess should test something new.",
+              "Stuck? Think of English words that fit the green letters, then say them out loud.",
+            ]}
+          />
         </div>
       </div>
     </Page>
+  );
+}
+
+/** What you've learned so far: letters in the right place, in the word, and ruled out. */
+function LettersCard({ letters }: { letters: Record<string, Tile> }) {
+  const groups: { tile: Tile; title: string }[] = [
+    { tile: "correct", title: "Right place" },
+    { tile: "present", title: "In the word" },
+    { tile: "absent", title: "Ruled out" },
+  ];
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Letters so far</CardTitle>
+        <CardDescription>Plan your next guess around these.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {groups.map(({ tile, title }) => {
+          const found = Object.keys(letters).filter((ch) => letters[ch] === tile).sort();
+          return (
+            <div key={tile} className="flex flex-col gap-1.5">
+              <p className="text-xs font-medium text-fg-2">{title}</p>
+              {found.length ? (
+                <ul className="flex flex-wrap gap-1.5" aria-label={title}>
+                  {found.map((ch) => (
+                    <li key={ch} className={cn("grid size-8 place-items-center rounded-lg text-sm font-bold uppercase", TILE_BG[tile])}>{ch}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-fg-3">None yet</p>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
   );
 }
 

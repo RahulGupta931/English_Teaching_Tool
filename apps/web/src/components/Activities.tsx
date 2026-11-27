@@ -2,31 +2,11 @@
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
-import { AudioLines, BriefcaseBusiness, ChevronRight, GraduationCap, LayoutGrid, Link2, ListChecks, MessagesSquare, Sparkles, Target, Timer, Zap, type LucideIcon } from "lucide-react";
+import { AudioLines, ChevronRight, GraduationCap, LayoutGrid, Link2, ListChecks, MessagesSquare, Sparkles, Target, Timer, Zap, type LucideIcon } from "lucide-react";
 import { IconTile, cardClass, cn } from "@/components/ui";
 
-export type Group = "Speaking" | "Games" | "Tests";
-export type Activity = { href: string; title: string; text: string; icon: LucideIcon; group: Group };
-
-/** Every practice activity, grouped like the mobile Practice tab. */
-export const ACTIVITIES: Activity[] = [
-  { href: "/roleplay", title: "AI Role-Play", text: "Practise a job interview or an everyday conversation.", icon: MessagesSquare, group: "Speaking" },
-  { href: "/coach", title: "Mistake Coach", text: "Talk hands-free about your recent mistakes, in English or Hinglish.", icon: GraduationCap, group: "Speaking" },
-  { href: "/interview", title: "Interview Preparation", text: "Upload your resume and answer questions about your own experience.", icon: BriefcaseBusiness, group: "Speaking" },
-  { href: "/jam", title: "JAM: Just a Minute", text: "Speak for 60 seconds on today's topic.", icon: Timer, group: "Speaking" },
-  { href: "/daily-word", title: "Daily Word", text: "Guess today's five-letter word in six tries.", icon: LayoutGrid, group: "Games" },
-  { href: "/word-chain", title: "Word Chain", text: "Say a word that starts with the last letter of the AI's word.", icon: Link2, group: "Games" },
-  { href: "/tongue-twister", title: "Tongue Twister", text: "Listen once, then say it clearly and quickly.", icon: AudioLines, group: "Games" },
-  { href: "/quiz", title: "MCQ Quiz", text: "Ten quick grammar and vocabulary questions.", icon: ListChecks, group: "Tests" },
-  { href: "/placement", title: "Placement Test", text: "Find your level: answer three questions out loud.", icon: Target, group: "Tests" },
-];
-
-/** One colour per group, so Practice reads as three families of cards rather than one flat list. */
-export const GROUP_TONE: Record<Group, { icon: "mint" | "coral" | "link"; blob: string; ring: string }> = {
-  Speaking: { icon: "mint", blob: "var(--mint)", ring: "hover:ring-mint/40" },
-  Games: { icon: "coral", blob: "var(--coral)", ring: "hover:ring-coral/40" },
-  Tests: { icon: "link", blob: "var(--link)", ring: "hover:ring-link/40" },
-};
+export { ACTIVITIES, GROUP_TONE, type Activity, type Group } from "@/lib/activities";
+import { GROUP_TONE, type Activity } from "@/lib/activities";
 
 export function ActivityCard({ a, meta, span }: { a: Activity; meta?: string; span?: "sm" | "lg" }) {
   const tone = GROUP_TONE[a.group];

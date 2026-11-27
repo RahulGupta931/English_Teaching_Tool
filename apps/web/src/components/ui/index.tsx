@@ -9,6 +9,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useId, type ComponentProps, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { pageMark } from "@/lib/activities";
 
 export const cn = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
 
@@ -23,12 +25,23 @@ export function Page({ className, children, ...rest }: ComponentProps<"main">) {
 }
 
 /** 40px title with the subtitle directly under it; optional actions on the right. */
+const MARK_TEXT = { mint: "text-accent-fg", coral: "text-coral", link: "text-link" };
+const MARK_DOT = { mint: "bg-mint", coral: "bg-coral", link: "bg-link" };
+
+/** Page title. Activity and account pages get a coloured section label from their URL. */
 export function PageHeader({ title, subtitle, actions }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }) {
+  const mark = pageMark(usePathname() ?? "");
   return (
-    <header className="flex flex-wrap items-end justify-between gap-4">
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-[2rem] font-semibold tracking-[-0.02em] text-fg sm:text-[2.5rem]">{title}</h1>
-        {subtitle && <p className="text-sm text-fg-2">{subtitle}</p>}
+    <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 border-b border-line pb-6">
+      <div className="flex min-w-0 flex-col gap-2">
+        {mark && (
+          <span className={cn("inline-flex w-fit items-center gap-2 text-xs font-semibold", MARK_TEXT[mark.tone])}>
+            <span className={cn("size-1.5 rounded-full", MARK_DOT[mark.tone])} aria-hidden />
+            {mark.label}
+          </span>
+        )}
+        <h1 className="text-[1.875rem] leading-[1.1] font-bold tracking-[-0.03em] text-balance text-fg sm:text-[2.5rem]">{title}</h1>
+        {subtitle && <p className="max-w-2xl text-[0.9375rem] leading-relaxed text-pretty text-fg-2">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}
     </header>
