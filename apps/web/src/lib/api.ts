@@ -89,6 +89,21 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body as T;
 }
 
+let meRequest: { promise: Promise<unknown>; at: number } | null = null;
+const ME_REUSE_MS = 2000;
+/**
+ * GET /v1/me, shared: the nav bar and the page both ask on every navigation, a few ms apart, so they get one request.
+ * A result is reused for 2 s only, so XP and streak still refresh on the next page visit after an activity.
+ */
+export function getMe<T>(): Promise<T> {
+  if (!meRequest || Date.now() - meRequest.at > ME_REUSE_MS) {
+    const promise = api<T>("/v1/me");
+    meRequest = { promise, at: Date.now() };
+    promise.catch(() => { meRequest = null; }); // never reuse a failure
+  }
+  return meRequest.promise as Promise<T>;
+}
+
 export const postJson = <T>(path: string, data: unknown) => api<T>(path, { method: "POST", body: JSON.stringify(data) });
 
 export function postAudio<T>(path: string, wav: Blob, fields: Record<string, string> = {}) {

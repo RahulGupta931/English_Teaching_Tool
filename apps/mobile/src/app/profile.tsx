@@ -4,7 +4,7 @@ import { Body, Button, Chip, ErrorText, H1, Muted, Screen, s as form } from "@/c
 import { errorText, postJson } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
-import { C, F } from "@/lib/theme";
+import { C, F, themed } from "@/lib/theme";
 
 /** Shown once after the first sign-in: details the API needs that Google and email sign-up don't give us. */
 export default function Profile() {
@@ -78,7 +78,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   consent: { flexDirection: "row", gap: 12, alignItems: "center" },
   box: { width: 26, height: 26, borderRadius: 8, borderWidth: 2, borderColor: C.ink },
-});
+}));

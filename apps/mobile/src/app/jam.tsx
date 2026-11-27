@@ -8,7 +8,7 @@ import { Body, Button, Card, CloseButton, Em, ErrorText, Label, Muted, Ring, Sta
 import { api, errorText, postAudio, type Mistake } from "@/lib/api";
 import { useMic } from "@/lib/audio";
 import { useSession } from "@/lib/session";
-import { C, F } from "@/lib/theme";
+import { C, F, themed } from "@/lib/theme";
 
 type Topic = { topic: string; think_seconds: number; speak_seconds: number };
 type Result = {
@@ -76,12 +76,12 @@ export default function Jam() {
           <Muted style={{ color: C.onDarkMuted, fontFamily: F.semibold }}>Today&apos;s topic</Muted>
           {topic ? <Text style={s.topicText}>{topic.topic}</Text> : <ActivityIndicator color={C.mint} />}
         </View>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 28 }}>
-          <Ring value={progress} size={270} stroke={20} color={phase === "think" ? C.mint : C.peach} track={C.nightCard}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, alignItems: "center", justifyContent: "center", gap: 22 }}>
+          <Ring value={progress} size={phase === "ready" ? 170 : 230} stroke={phase === "ready" ? 16 : 20} color={phase === "think" ? C.mint : C.peach} track={C.nightCard}>
             {phase === "scoring" ? <ActivityIndicator size="large" color={C.peach} /> : (
               <>
                 <Text style={s.count}>{left}</Text>
-                <Muted style={{ color: C.onDarkMuted, fontSize: 18 }}>{phase === "think" ? "seconds to think" : "seconds left"}</Muted>
+                <Muted style={{ color: C.onDarkMuted, fontSize: 15 }}>{phase === "think" ? "seconds to think" : "seconds left"}</Muted>
               </>
             )}
           </Ring>
@@ -92,7 +92,8 @@ export default function Jam() {
             </Text>
           </View>
           <ErrorText>{error}</ErrorText>
-        </View>
+          {phase === "ready" && <JamGuide />}
+        </ScrollView>
         {phase === "speak" ? (
           <Button title="Stop early" tone="grey" icon={Square} onPress={mic.send} disabled={mic.seconds < 5} />
         ) : phase === "think" ? (
@@ -102,6 +103,36 @@ export default function Jam() {
         )}
       </View>
     </SafeAreaView>
+  );
+}
+
+/** Before you start: how to structure the minute and how the score works (same facts as web and the API). */
+function JamGuide() {
+  return (
+    <View style={{ alignSelf: "stretch", gap: 12 }}>
+      <View style={s.guide}>
+        <Text style={s.guideTitle}>Plan your minute</Text>
+        {[
+          ["0–10 s", "Open", "Say what the topic means to you in one sentence."],
+          ["10–50 s", "Two or three points", "Give a reason or a short example for each."],
+          ["50–60 s", "Close", "Sum up, or say how you feel about it now."],
+        ].map(([time, title, text]) => (
+          <View key={title} style={{ flexDirection: "row", gap: 10 }}>
+            <Text style={s.guideTime}>{time}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.guideStep}>{title}</Text>
+              <Muted style={{ color: C.onDarkMuted, fontSize: 13 }}>{text}</Muted>
+            </View>
+          </View>
+        ))}
+      </View>
+      <View style={s.guide}>
+        <Text style={s.guideTitle}>How you&apos;re scored</Text>
+        <Muted style={{ color: C.onDarkMuted, fontSize: 13 }}>The average of fluency, vocabulary, grammar and relevance to the topic, out of 100. Then points come off:</Muted>
+        <View style={s.between}><Text style={s.guideStep}>Each filler word (umm, like…)</Text><Text style={s.minus}>−2, up to −20</Text></View>
+        <View style={s.between}><Text style={s.guideStep}>Each long pause</Text><Text style={s.minus}>−2, up to −10</Text></View>
+      </View>
+    </View>
   );
 }
 
@@ -118,12 +149,12 @@ function JamResult({ r, onAgain }: { r: Result; onAgain: () => void }) {
             <CloseButton dark />
           </View>
           <View style={{ flexDirection: "row", gap: 18, alignItems: "center" }}>
-            <Ring value={r.score / 100} size={150} stroke={14} color={C.peach} track={C.nightCard}>
-              <Text style={[s.count, { fontSize: 50 }]}>{r.score}</Text>
+            <Ring value={r.score / 100} size={128} stroke={14} color={C.peach} track={C.nightCard}>
+              <Text style={[s.count, { fontSize: 41 }]}>{r.score}</Text>
               <Muted style={{ color: C.onDarkMuted, fontSize: 14 }}>out of 100</Muted>
             </Ring>
             <View style={{ flex: 1, gap: 8 }}>
-              <Text style={s.headline}>{r.score >= 70 ? "What a " : "Nice "}<Em style={{ color: C.peach, fontSize: 32 }}>minute</Em>!</Text>
+              <Text style={s.headline}>{r.score >= 70 ? "What a " : "Nice "}<Em style={{ color: C.peach, fontSize: 26 }}>minute</Em>!</Text>
               <Body style={{ color: C.onDarkMuted }}>{r.feedback}</Body>
               <XpChip xp={r.xp} tone="mint" />
             </View>
@@ -132,7 +163,7 @@ function JamResult({ r, onAgain }: { r: Result; onAgain: () => void }) {
         <View style={{ padding: 20, gap: 14 }}>
           <View style={s.grid}>
             <Stat align="left" value={r.metrics.words_per_minute} label="Words per minute" />
-            <Stat align="left" value={r.metrics.filler_count} label={fillers ? `Filler words · ${fillers}` : "Filler words"} bg={r.metrics.filler_count ? C.peachSoft : "#fff"} />
+            <Stat align="left" value={r.metrics.filler_count} label={fillers ? `Filler words · ${fillers}` : "Filler words"} bg={r.metrics.filler_count ? C.peachSoft : C.surface} />
           </View>
           <View style={s.grid}>
             <Stat align="left" value={r.metrics.long_pauses} label="Long pauses" />
@@ -164,17 +195,23 @@ function JamResult({ r, onAgain }: { r: Result; onAgain: () => void }) {
   );
 }
 
-const s = StyleSheet.create({
-  topic: { backgroundColor: C.nightCard, borderRadius: 28, padding: 24, gap: 8, borderWidth: 1, borderColor: "#26302C" },
-  topicText: { fontFamily: F.bold, fontSize: 26, lineHeight: 33, color: C.onDark },
-  count: { fontFamily: F.extrabold, fontSize: 110, color: C.onDark, letterSpacing: -3 },
+const s = themed(() => StyleSheet.create({
+  guide: { backgroundColor: C.nightCard, borderRadius: 18, padding: 16, gap: 10 },
+  guideTitle: { fontFamily: F.bold, fontSize: 16, color: C.onDark },
+  guideTime: { fontFamily: F.bold, fontSize: 12, color: C.mint, width: 62, marginTop: 2 },
+  guideStep: { fontFamily: F.semibold, fontSize: 14, color: C.onDark, flexShrink: 1 },
+  minus: { fontFamily: F.bold, fontSize: 13, color: C.peach },
+  between: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
+  topic: { backgroundColor: C.nightCard, borderRadius: 22, padding: 24, gap: 8, borderWidth: 1, borderColor: "#26302C" },
+  topicText: { fontFamily: F.bold, fontSize: 21, lineHeight: 27, color: C.onDark },
+  count: { fontFamily: F.extrabold, fontSize: 90, color: C.onDark, letterSpacing: -3 },
   pill: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#33291F", paddingHorizontal: 22, paddingVertical: 12, borderRadius: 999 },
   dot: { width: 12, height: 12, borderRadius: 6 },
-  pillText: { fontFamily: F.bold, fontSize: 18, color: C.peach },
+  pillText: { fontFamily: F.bold, fontSize: 15, color: C.peach },
   head: { backgroundColor: C.night, borderBottomLeftRadius: 36, borderBottomRightRadius: 36, padding: 20, gap: 14 },
-  headline: { fontFamily: F.extrabold, fontSize: 30, color: C.onDark, letterSpacing: -0.6 },
+  headline: { fontFamily: F.extrabold, fontSize: 25, color: C.onDark, letterSpacing: -0.6 },
   grid: { flexDirection: "row", gap: 14 },
   track: { height: 10, borderRadius: 5, backgroundColor: C.grey, overflow: "hidden" },
   fill: { height: 10, borderRadius: 5, backgroundColor: C.progress },
   heard: { backgroundColor: C.grey, borderRadius: 24, padding: 20 },
-});
+}));

@@ -1,4 +1,6 @@
 /*
+ * Design tokens, following the ChatBubble design system: green primary (#22C55E), blue for links,
+ * purple as the tertiary accent, white/grey surfaces, 20px card radius, small shadows.
  * Design tokens. Day is the default theme; Night applies with <html data-theme="night">.
  * Components read these through Tailwind utilities (mapped in @theme below), e.g.
  * bg-surface, text-fg-2, bg-mint, text-on-mint, rounded-card.
@@ -6,71 +8,78 @@
 
 :root {
   /* Accents (both themes) */
-  --mint: #7ee8b5;
-  --mint-hover: #5fd9a0;
-  --on-mint: #0f2a20;
-  --hero-from: #0f3d2e;
-  --hero-to: #1f5a44;
-  --coral: #f4a47c;
-  --peach: #fbd9c6;
-  --danger: #f06a6a;
-  --rail-from: #0f3d2e;
-  --rail-to: #133528;
-  --on-dark: #e8f1ec;
-  --on-dark-2: #a9c2b6;
+  --mint: #22c55e;
+  --mint-hover: #16a34a;
+  --on-mint: #052e16;
+  --hero-from: #14532d;
+  --hero-to: #166534;
+  --coral: #9333ea;
+  --peach: #f3e8ff;
+  --danger: #ef4444;
+  --rail-from: #14532d;
+  --rail-to: #0f3d22;
+  --on-dark: #f0fdf4;
+  --on-dark-2: #bbf7d0;
 
   /* Day */
-  --bg-from: #e6f2ec;
-  --bg-to: #f6ede6;
-  --bg-glow: rgb(126 232 181 / 0.18);
-  --shell: rgb(255 255 255 / 0.42);
-  --shell-border: rgb(255 255 255 / 0.7);
+  --bg-from: #ffffff;
+  --bg-to: #f3f4f6;
+  --bg-glow: rgb(34 197 94 / 0.06);
+  --shell: rgb(255 255 255 / 0.7);
+  --shell-border: #e5e7eb;
   --surface: #ffffff;
   --surface-solid: #ffffff; /* opaque card colour (lens copy) */
-  --surface-raised: #f1f5f3;
-  --surface-hover: #e6eee9;
-  --line: rgb(15 42 32 / 0.07);
-  --fg: #0f2a20;
-  --fg-2: #5b6f66;
-  --fg-3: #607369; /* kept at 4.5:1 on white for 12px meta text */
-  --accent-fg: #1f5a44; /* mint fails as text on light surfaces, so accent text is deep green */
-  --danger-fg: #b93a3a;
-  --ring: #1e9a66; /* mint focus ring, darkened so it stays 3:1 on light surfaces */
-  --shadow-card: 0 8px 30px rgb(15 42 32 / 0.06);
-  --shadow-pop: 0 20px 60px rgb(15 42 32 / 0.18);
-  --scrim: rgb(15 42 32 / 0.25);
-  --track: #d7e1dc;
+  --surface-raised: #f3f4f6;
+  --surface-hover: #e5e7eb;
+  --line: rgb(17 24 39 / 0.08);
+  --fg: #111827;
+  --fg-2: #4b5563;
+  --fg-3: #6b7280; /* kept at 4.5:1 on white for 12px meta text */
+  --accent-fg: #15803d; /* mint fails as text on light surfaces, so accent text is deep green */
+  --danger-fg: #dc2626;
+  --ring: #16a34a; /* mint focus ring, darkened so it stays 3:1 on light surfaces */
+  --shadow-card: 0 1px 3px rgb(17 24 39 / 0.06);
+  --shadow-pop: 0 12px 32px rgb(17 24 39 / 0.14);
+  --scrim: rgb(17 24 39 / 0.3);
+  --track: #e5e7eb;
+  /* Chat bubbles (ChatBubble design spec): sent green, received light grey */
+  --chat-sent: #22c55e;
+  --chat-received: #f3f4f6;
 
   /* Shape + motion */
-  --tabbar-height: 88px;
+  --tabbar-height: 64px; /* docked bottom bar on phones */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
   color-scheme: light;
+  --on-coral: #ffffff;
+  --link: #2563eb;
 }
 
 :root[data-theme="night"] {
-  --bg-from: #0b1410;
-  --bg-to: #0f1f18;
-  --bg-glow: rgb(126 232 181 / 0.07);
-  --shell: rgb(15 31 24 / 0.55);
-  --shell-border: rgb(255 255 255 / 0.05);
-  --surface: rgb(19 35 28 / 0.8);
-  --surface-solid: #13231c;
-  --surface-raised: #1a2e25;
-  --surface-hover: #1f3a2e;
-  --line: rgb(255 255 255 / 0.05);
-  --fg: #e8f1ec;
-  --fg-2: #8fa39a;
-  --fg-3: #7f948a; /* #5E7268 is below AA for text; used only for non-text below */
-  --accent-fg: #7ee8b5;
-  --danger-fg: #f58a8a;
-  --ring: #7ee8b5;
-  --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 8px 30px rgb(0 0 0 / 0.25);
-  --shadow-pop: 0 24px 70px rgb(0 0 0 / 0.55);
-  --scrim: rgb(5 10 8 / 0.55);
-  --track: #5e7268;
+  --bg-from: #0b0f14;
+  --bg-to: #111827;
+  --bg-glow: rgb(34 197 94 / 0.05);
+  --shell: rgb(17 24 39 / 0.6);
+  --shell-border: rgb(255 255 255 / 0.06);
+  --surface: rgb(31 41 55 / 0.85);
+  --surface-solid: #1f2937;
+  --surface-raised: #1f2937;
+  --surface-hover: #374151;
+  --line: rgb(255 255 255 / 0.07);
+  --fg: #f9fafb;
+  --fg-2: #9ca3af;
+  --fg-3: #9ca3af; /* #5E7268 is below AA for text; used only for non-text below */
+  --accent-fg: #4ade80;
+  --danger-fg: #f87171;
+  --ring: #4ade80;
+  --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 3px rgb(0 0 0 / 0.3);
+  --shadow-pop: 0 16px 40px rgb(0 0 0 / 0.5);
+  --scrim: rgb(0 0 0 / 0.55);
+  --track: #4b5563;
+  --chat-received: var(--surface-raised);
 
   color-scheme: dark;
+  --link: #60a5fa;
 }
 
 @theme inline {
@@ -91,18 +100,22 @@
   --color-hero: var(--hero-from);
   --color-hero-2: var(--hero-to);
   --color-coral: var(--coral);
+  --color-on-coral: var(--on-coral);
+  --color-link: var(--link);
   --color-peach: var(--peach);
   --color-danger: var(--danger);
   --color-danger-fg: var(--danger-fg);
   --color-on-dark: var(--on-dark);
   --color-on-dark-2: var(--on-dark-2);
   --color-track: var(--track);
+  --color-chat-sent: var(--chat-sent);
+  --color-chat-received: var(--chat-received);
 
-  --radius-shell: 32px;
-  --radius-rail: 28px;
-  --radius-card: 24px;
-  --radius-tile: 18px;
-  --radius-input: 14px;
+  --radius-shell: 28px;
+  --radius-rail: 24px;
+  --radius-card: 20px;
+  --radius-tile: 16px;
+  --radius-input: 12px;
 
   --shadow-card: var(--shadow-card);
   --shadow-pop: var(--shadow-pop);
@@ -118,33 +131,25 @@ html.theme-anim *::after {
 }
 
 /* ---------- Legacy aliases ----------
- * Older screens (ui.module.css) still read these names. They map onto the new tokens
- * and go away once every screen uses the primitives.
+ * Score and tile colours (good / ok / bad, Daily Word tiles) used by the result and game screens.
+ * They map onto the new tokens where one exists.
  */
 :root {
-  --background: var(--bg-from);
   --surface-2: var(--surface-raised);
-  --foreground: var(--fg);
-  --muted: var(--fg-2);
-  --border: var(--line);
-  --accent: var(--accent-fg);
   --accent-hover: var(--hero-from);
   --on-accent: #ffffff;
-  --accent-soft: rgb(126 232 181 / 0.3);
+  --accent-soft: rgb(34 197 94 / 0.2);
   --good: #15803d;
   --good-soft: #dcfce7;
   --ok: #b45309;
   --ok-soft: #fef3c7;
   --bad: var(--danger-fg);
-  --bad-soft: #fde4e4;
-  --xp: #b45309;
-  --streak: #c2410c;
-  --tile-correct: #15803d;
-  --tile-present: #b45309;
-  --tile-absent: #64748b;
-  --radius-sm: 14px;
-  --radius: 24px;
-  --radius-lg: 24px;
+  --bad-soft: #fee2e2;
+  --xp: #9333ea;
+  --streak: #9333ea;
+  --tile-correct: #16a34a;
+  --tile-present: #d97706;
+  --tile-absent: #6b7280;
   --shadow-sm: var(--shadow-card);
   --shadow: var(--shadow-card);
   --fast: 150ms;
@@ -152,13 +157,19 @@ html.theme-anim *::after {
 }
 :root[data-theme="night"] {
   --on-accent: var(--on-mint);
-  --accent-soft: rgb(126 232 181 / 0.14);
+  --accent-soft: rgb(34 197 94 / 0.15);
   --good: #4ade80;
-  --good-soft: #12301f;
+  --good-soft: #052e16;
   --ok: #fbbf24;
   --ok-soft: #33270c;
-  --bad-soft: #3a1717;
-  --xp: #fbbf24;
-  --streak: #fb923c;
-  --tile-absent: #475569;
+  --bad-soft: #450a0a;
+  --xp: #d8b4fe;
+  --streak: #d8b4fe;
+  --tile-absent: #4b5563;
+}
+
+/* Inside dark cards (anything with text-on-dark) the purple accent turns light, with dark text on it, so it stays readable. */
+.text-on-dark {
+  --coral: #d8b4fe;
+  --on-coral: #2e1065;
 }

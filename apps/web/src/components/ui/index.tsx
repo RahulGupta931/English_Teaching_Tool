@@ -5,6 +5,7 @@
  */
 
 import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useId, type ComponentProps, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
@@ -65,21 +66,10 @@ export const CardTitle = ({ className, ...rest }: ComponentProps<"h2">) => (
 /* ---------- Buttons ---------- */
 
 type ButtonVariant = "primary" | "coral" | "ghost" | "danger" | "glass";
-const BUTTON: Record<ButtonVariant, string> = {
-  primary: "bg-mint text-on-mint hover:bg-mint-hover",
-  coral: "bg-coral text-on-mint hover:brightness-105",
-  ghost: "bg-raised text-fg hover:bg-hover",
-  glass: "bg-white/10 text-on-dark hover:bg-white/15",
-  danger: "bg-transparent text-danger-fg ring-1 ring-inset ring-danger/50 hover:bg-danger/10",
-};
+// The house names map onto the shadcn button (components/ui/button.tsx), so every button shares one style.
+const SHADCN_VARIANT = { primary: "default", coral: "coral", ghost: "secondary", glass: "glass", danger: "destructive" } as const;
 export const buttonClass = (variant: ButtonVariant = "primary", size: "md" | "sm" = "md") =>
-  cn(
-    "inline-flex cursor-pointer items-center justify-center gap-2 rounded-full font-semibold whitespace-nowrap",
-    "transition duration-150 ease-out hover:-translate-y-px active:scale-[0.97]",
-    "disabled:pointer-events-none disabled:opacity-45",
-    size === "md" ? "h-11 px-5 text-sm" : "h-9 px-4 text-[0.8125rem]",
-    BUTTON[variant],
-  );
+  buttonVariants({ variant: SHADCN_VARIANT[variant], size: size === "md" ? "default" : "sm" });
 
 type ButtonOwn = { variant?: ButtonVariant; size?: "md" | "sm"; icon?: LucideIcon };
 
@@ -103,7 +93,7 @@ export function ButtonLink({ variant, size, icon: I, className, children, ...res
 
 /* ---------- Tooltip (CSS only: shows on hover and keyboard focus) ---------- */
 
-export function Tooltip({ label, side = "right", children }: { label: string; side?: "right" | "top" | "bottom"; children: ReactNode }) {
+export function Tooltip({ label, side = "right", className, children }: { label: string; side?: "right" | "top" | "bottom"; className?: string; children: ReactNode }) {
   const pos = {
     right: "left-full top-1/2 ml-3 -translate-y-1/2",
     top: "bottom-full left-1/2 mb-2 -translate-x-1/2",
@@ -118,6 +108,7 @@ export function Tooltip({ label, side = "right", children }: { label: string; si
           "pointer-events-none absolute z-50 rounded-full bg-mint px-3 py-1 text-xs font-semibold whitespace-nowrap text-on-mint shadow-pop",
           "scale-95 opacity-0 transition duration-150 group-hover/tip:scale-100 group-hover/tip:opacity-100 group-has-[:focus-visible]/tip:scale-100 group-has-[:focus-visible]/tip:opacity-100",
           pos,
+          className,
         )}
       >
         {label}
@@ -274,8 +265,8 @@ export function AvatarStack({ people, max = 4, size = 32 }: { people: { name: st
 
 /* ---------- List row ---------- */
 
-export function IconTile({ icon: I, tone = "raised", size = 40 }: { icon: LucideIcon; tone?: "raised" | "mint" | "hero"; size?: number }) {
-  const cls = { raised: "bg-raised text-accent-fg", mint: "bg-mint text-on-mint", hero: "bg-white/10 text-mint" }[tone];
+export function IconTile({ icon: I, tone = "raised", size = 40 }: { icon: LucideIcon; tone?: "raised" | "mint" | "hero" | "coral" | "link"; size?: number }) {
+  const cls = { raised: "bg-raised text-accent-fg", mint: "bg-mint text-on-mint", hero: "bg-white/10 text-mint", coral: "bg-coral/15 text-coral", link: "bg-link/15 text-link" }[tone];
   return (
     <span className={cn("grid shrink-0 place-items-center rounded-xl", cls)} style={{ width: size, height: size }}>
       <I size={size * 0.45} aria-hidden />

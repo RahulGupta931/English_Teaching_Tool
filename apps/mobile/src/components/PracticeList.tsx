@@ -1,18 +1,25 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router, useFocusEffect, type Href } from "expo-router";
-import { AudioLines, Briefcase, ChevronRight, GraduationCap, LayoutGrid, Link2, ListChecks, MessagesSquare, Search, Target, Timer, X, type LucideIcon } from "lucide-react-native";
+import { router, useFocusEffect } from "expo-router";
+import { BookX, Flame, Search, Sparkles, X, type LucideIcon } from "lucide-react-native";
 import { useCallback, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { C, F } from "@/lib/theme";
-import { Chip, GreenCard, H1, IconTile, List, Muted, Row, RoundButton, Screen, s as ui } from "./ui";
-
-type Group = "Speaking" | "Games" | "Tests";
-type Item = { title: string; text: string; icon: LucideIcon; href: Href; group: Group; bg?: string };
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useSession } from "@/lib/session";
+import { C, F, themed } from "@/lib/theme";
+import { ACTIVITIES, ActivityCard, groupTone, type Group } from "./Activities";
+import { Chip, H1, IconTile, Muted, RoundButton, Screen, s as ui } from "./ui";
 
 export const TWISTER_LEVEL_KEY = "twister-unlocked";
 
-/** Every practice activity (Figma page 4). The Games tab shows the same list filtered to games. */
+const GROUPS: Group[] = ["Speaking", "Games", "Tests"];
+const GROUP_TEXT: Record<Group, string> = {
+  Speaking: "Hold a conversation out loud, with an AI partner or your coach.",
+  Games: "Quick daily games for new words and clearer speech.",
+  Tests: "Check what you know, and find your level.",
+};
+
+/** Practice: stats, then every activity in three coloured groups (same layout as the web Practice page). */
 export function PracticeList({ title, initial = "All" }: { title: string; initial?: "All" | Group }) {
+  const { me, refresh } = useSession();
   const [filter, setFilter] = useState<"All" | Group>(initial);
   const [query, setQuery] = useState<string | null>(null);
   const [twister, setTwister] = useState(1);
@@ -20,74 +27,83 @@ export function PracticeList({ title, initial = "All" }: { title: string; initia
     AsyncStorage.getItem(TWISTER_LEVEL_KEY).then((v) => setTwister(Number(v) || 1)).catch(() => {});
   }, []));
 
-  const ITEMS: Item[] = [
-    { title: "AI Role-Play", text: "Job interview or everyday chat", icon: MessagesSquare, href: "/roleplay", group: "Speaking" },
-    { title: "Mistake Coach", text: "Hands-free", icon: GraduationCap, href: "/coach", group: "Speaking", bg: C.peachSoft },
-    { title: "Interview", text: "From your resume", icon: Briefcase, href: "/interview", group: "Speaking" },
-    { title: "JAM", text: "Speak for 1 minute", icon: Timer, href: "/jam", group: "Speaking" },
-    { title: "Daily Word", text: "New word today", icon: LayoutGrid, href: "/daily-word", group: "Games", bg: C.mint },
-    { title: "Word Chain", text: "Beat the AI", icon: Link2, href: "/word-chain", group: "Games" },
-    { title: "Tongue Twister", text: `Level ${twister} of 15`, icon: AudioLines, href: "/tongue-twister", group: "Games" },
-    { title: "MCQ Quiz", text: "10 grammar and vocabulary questions", icon: ListChecks, href: "/quiz", group: "Tests" },
-    { title: "Placement Test", text: "Answer 3 questions to find your level", icon: Target, href: "/placement", group: "Tests" },
-  ];
   const q = query?.trim().toLowerCase() ?? "";
-  const shown = ITEMS.filter((i) => (filter === "All" || i.group === filter) && (!q || `${i.title} ${i.text}`.toLowerCase().includes(q)));
-  const [hero, ...rest] = shown[0]?.title === "AI Role-Play" ? shown : [null, ...shown];
-  const tiles = rest.filter((i) => i!.group !== "Tests") as Item[];
-  const tests = rest.filter((i) => i!.group === "Tests") as Item[];
+  const shown = ACTIVITIES.filter((a) => (filter === "All" || a.group === filter) && (!q || `${a.title} ${a.text}`.toLowerCase().includes(q)));
+  const mistakeCount = me ? new Set(me.mistakes.map((m) => m.original.toLowerCase())).size : 0;
+  const metaFor = (kind?: string) => {
+    if (kind === "tongue_twister") return `Level ${twister} of 15`;
+    const b = kind ? me?.best[kind] : undefined;
+    return b === undefined ? undefined : `Best score ${Math.round(b)}`;
+  };
 
   return (
-    <Screen scroll style={{ paddingBottom: 140 }}>
+    <Screen scroll style={{ paddingBottom: 120, gap: 18 }} onRefresh={refresh}>
       <View style={s.top}>
-        <H1 style={{ fontSize: 44, flex: 1 }}>{title}</H1>
+        <View style={{ flex: 1 }}>
+          <H1 style={{ fontSize: 30 }}>{title}</H1>
+          <Muted>Speaking, games and tests, all in one place.</Muted>
+        </View>
         <RoundButton icon={query === null ? Search : X} label={query === null ? "Search" : "Close search"} onPress={() => setQuery(query === null ? "" : null)} />
       </View>
+
+      {/* Quick stats, as on web */}
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <StatTile icon={Sparkles} bg={C.mint} fg={C.onMint} label="Activities" value={ACTIVITIES.length} />
+        <StatTile icon={Flame} bg={C.peachSoft} fg={C.purple} label="Day streak" value={me ? me.user.streak : "–"} />
+        <StatTile icon={BookX} bg={C.blueSoft} fg={C.blue} label="Mistakes" value={me ? mistakeCount : "–"}
+          onPress={mistakeCount ? () => router.push("/mistakes") : undefined} />
+      </View>
+
       {query !== null && <TextInput autoFocus style={ui.input} value={query} onChangeText={setQuery} placeholder="Search practice" placeholderTextColor={C.muted} />}
-      <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
         {(["All", "Speaking", "Games", "Tests"] as const).map((f) => (
-          <Chip key={f} text={f} tone={filter === f ? "mint" : "white"} onPress={() => setFilter(f)} style={{ paddingHorizontal: 18, paddingVertical: 10 }} />
+          <Chip key={f} text={f} tone={filter === f ? "mint" : "white"} onPress={() => setFilter(f)} style={{ paddingHorizontal: 16, paddingVertical: 9 }} />
         ))}
-      </View>
+      </ScrollView>
 
-      {hero && (
-        <Pressable accessibilityRole="button" onPress={() => router.push(hero.href)}>
-          <GreenCard style={s.hero}>
-            <IconTile icon={hero.icon} bg={C.mint} size={64} />
-            <View style={{ flex: 1 }}>
-              <Text style={s.heroTitle}>{hero.title}</Text>
-              <Muted style={{ color: C.onDarkMuted }}>{hero.text}</Muted>
-            </View>
-            <ChevronRight color={C.mint} size={26} />
-          </GreenCard>
-        </Pressable>
-      )}
-
-      <View style={s.grid}>
-        {tiles.map((i) => (
-          <Pressable key={i.title} accessibilityRole="button" onPress={() => router.push(i.href)} style={[s.tile, { backgroundColor: i.bg ?? "#fff" }]}>
-            <i.icon size={32} color={C.ink} strokeWidth={1.8} />
-            <Text style={s.tileTitle}>{i.title}</Text>
-            <Muted numberOfLines={1}>{i.text}</Muted>
-          </Pressable>
-        ))}
-      </View>
-
-      {tests.length > 0 && (
-        <List>
-          {tests.map((i, n) => <Row key={i.title} first={n === 0} icon={i.icon} iconBg={C.grey} title={i.title} subtitle={i.text} onPress={() => router.push(i.href)} />)}
-        </List>
-      )}
       {shown.length === 0 && <Muted style={{ textAlign: "center" }}>Nothing matches &quot;{query}&quot;.</Muted>}
+      {GROUPS.filter((g) => shown.some((a) => a.group === g)).map((g) => {
+        const items = shown.filter((a) => a.group === g);
+        const tone = groupTone(g);
+        return (
+          <View key={g} style={{ gap: 12 }}>
+            <View style={s.groupHead}>
+              <IconTile icon={items[0].icon} bg={tone.bg} color={tone.fg} size={34} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.groupTitle}>{g} <Text style={s.count}>· {items.length}</Text></Text>
+                <Muted style={{ fontSize: 13 }}>{GROUP_TEXT[g]}</Muted>
+              </View>
+            </View>
+            <View style={s.grid}>
+              {items.map((a, i) => (
+                // A lone card left over in the last row spans the full width, instead of leaving half of it empty.
+                <ActivityCard key={a.title} a={a} meta={metaFor(a.kind)} full={i === items.length - 1 && items.length % 2 === 1} />
+              ))}
+            </View>
+          </View>
+        );
+      })}
     </Screen>
   );
 }
 
-const s = StyleSheet.create({
-  top: { flexDirection: "row", alignItems: "center", marginTop: 8 },
-  hero: { flexDirection: "row", alignItems: "center", gap: 18, paddingVertical: 26 },
-  heroTitle: { fontFamily: F.bold, fontSize: 22, color: C.onDark },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 14 },
-  tile: { width: "47.8%", borderRadius: 28, padding: 22, gap: 6 },
-  tileTitle: { fontFamily: F.bold, fontSize: 19, color: C.ink, marginTop: 14 },
-});
+function StatTile({ icon: I, bg, fg, label, value, onPress }: { icon: LucideIcon; bg: string; fg: string; label: string; value: string | number; onPress?: () => void }) {
+  return (
+    <Pressable accessibilityRole={onPress ? "button" : undefined} accessibilityLabel={`${label}: ${value}`} disabled={!onPress} onPress={onPress} style={s.stat}>
+      <View style={[s.statIcon, { backgroundColor: bg }]}><I size={16} color={fg} /></View>
+      <Text style={s.statValue}>{value}</Text>
+      <Muted style={{ fontSize: 12 }} numberOfLines={1}>{label}</Muted>
+    </Pressable>
+  );
+}
+
+const s = themed(() => StyleSheet.create({
+  top: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 },
+  stat: { flex: 1, backgroundColor: C.surface, borderRadius: 18, padding: 12, gap: 4 },
+  statIcon: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", marginBottom: 2 },
+  statValue: { fontFamily: F.extrabold, fontSize: 20, color: C.ink },
+  groupHead: { flexDirection: "row", alignItems: "center", gap: 10 },
+  groupTitle: { fontFamily: F.bold, fontSize: 17, color: C.ink },
+  count: { fontFamily: F.regular, fontSize: 14, color: C.muted },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+}));

@@ -3,12 +3,13 @@ import { GraduationCap, Mic, Pause, Volume1 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View, type ScrollViewInstance } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ActivityInfo } from "@/components/ActivityInfo";
 import { Avatar, Bubbles, type Line } from "@/components/Speaking";
 import { BackButton, Body, Button, Card, Chip, CloseButton, Em, ErrorText, GreenCard, Header, IconTile, Label, MistakeCard, Muted, Screen, Stat, Title, XpChip } from "@/components/ui";
 import { errorText, postAudio, postJson, type Mistake } from "@/lib/api";
 import { playAudio, stopAudio, useMic } from "@/lib/audio";
 import { useSession } from "@/lib/session";
-import { C, F } from "@/lib/theme";
+import { C, F, themed } from "@/lib/theme";
 
 type Lang = "english" | "hinglish";
 type Start = { session_id: number; reply: string; audio: string | null; turns_left: number; language: Lang; mistakes: number };
@@ -58,21 +59,21 @@ export default function Coach() {
           {(["english", "hinglish"] as const).map((l) => (
             <Pressable key={l} accessibilityRole="button" accessibilityState={{ selected: lang === l }} onPress={() => setLang(l)}
               style={[s.segItem, lang === l && { backgroundColor: C.ink }]}>
-              <Text style={[s.segText, lang === l && { color: "#fff" }]}>{l === "english" ? "English" : "Hinglish"}</Text>
+              <Text style={[s.segText, lang === l && { color: C.onInk }]}>{l === "english" ? "English" : "Hinglish"}</Text>
             </Pressable>
           ))}
         </View>
       </View>
       <View style={s.hero}>
         <View style={s.ring} />
-        <IconTile icon={GraduationCap} bg={C.ink} color={C.peachSoft} size={72} />
+        <IconTile icon={GraduationCap} bg={C.ink} color={C.peachSoft} size={56} />
         <Label style={{ marginTop: 12 }}>Mistake coach</Label>
-        <Text style={s.heroTitle}>Fix your recent <Em style={{ fontSize: 40 }}>mistakes</Em></Text>
-        <Body style={{ color: C.muted, fontSize: 17, lineHeight: 25 }}>Your coach explains each one, you say it the right way, and it checks you. Hands-free: just speak.</Body>
+        <Text style={s.heroTitle}>Fix your recent <Em style={{ fontSize: 33 }}>mistakes</Em></Text>
+        <Body style={{ color: C.muted, fontSize: 17, lineHeight: 20 }}>Your coach explains each one, you say it the right way, and it checks you. Hands-free: just speak.</Body>
       </View>
       {recent.length ? (
         <>
-          <Title style={{ fontSize: 22 }}>You&apos;ll practise these</Title>
+          <Title style={{ fontSize: 18 }}>You&apos;ll practise these</Title>
           {recent.slice(0, 8).map((m, i) => <MistakeCard key={i} m={{ ...m, explanation: "" }} hideType />)}
         </>
       ) : (
@@ -86,6 +87,7 @@ export default function Coach() {
         </Card>
       )}
       <ErrorText>{error}</ErrorText>
+      <ActivityInfo kind="coach" tips={["Say each corrected sentence out loud, slowly at first.", "Ask the coach to explain again if anything is unclear.", "Switch to Hinglish explanations anytime.", "Finish to get a recap of what you fixed."]} />
     </Screen>
   );
 }
@@ -202,29 +204,29 @@ function CoachRecap({ r, onAgain }: { r: Recap & { turns: number; practised: num
             <Volume1 size={24} color={C.mint} />
           </Pressable>
         </View>
-        <Text style={s.recapTitle}>You practised <Em style={{ color: C.mint, fontSize: 38 }}>{r.practised}</Em> mistake{r.practised === 1 ? "" : "s"}</Text>
+        <Text style={s.recapTitle}>You practised <Em style={{ color: C.mint, fontSize: 31 }}>{r.practised}</Em> mistake{r.practised === 1 ? "" : "s"}</Text>
         <Body style={{ color: C.onDarkMuted }}>{r.summary}</Body>
       </GreenCard>
       <View style={{ flexDirection: "row", gap: 12 }}>
-        <Stat value={r.practised} label="Practised" bg={C.mint} />
+        <Stat value={r.practised} label="Practised" bg={C.mintTile} />
         <Stat value={r.mistakes.length} label="New to fix" bg={C.peachSoft} />
         <Stat value={r.turns} label="Turns" />
       </View>
-      {r.mistakes.length > 0 && <Title style={{ fontSize: 22 }}>New things to work on</Title>}
+      {r.mistakes.length > 0 && <Title style={{ fontSize: 18 }}>New things to work on</Title>}
       {r.mistakes.map((m, i) => <MistakeCard key={i} m={m} />)}
     </Screen>
   );
 }
 
-const s = StyleSheet.create({
-  segment: { flexDirection: "row", backgroundColor: "#fff", borderRadius: 999, padding: 5 },
+const s = themed(() => StyleSheet.create({
+  segment: { flexDirection: "row", backgroundColor: C.surface, borderRadius: 999, padding: 5 },
   segItem: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },
   segText: { fontFamily: F.semibold, fontSize: 17, color: C.muted },
-  hero: { backgroundColor: C.peachSoft, borderRadius: 32, padding: 28, gap: 8, overflow: "hidden" },
-  ring: { position: "absolute", right: -50, top: -30, width: 220, height: 220, borderRadius: 110, borderWidth: 40, borderColor: "#F6C3A8" },
-  heroTitle: { fontFamily: F.extrabold, fontSize: 36, lineHeight: 42, letterSpacing: -1, color: C.ink },
-  panel: { backgroundColor: "#fff", borderRadius: 36, marginHorizontal: 12, marginBottom: 4, padding: 20, alignItems: "center", gap: 14,
+  hero: { backgroundColor: C.peachSoft, borderRadius: 22, padding: 28, gap: 8, overflow: "hidden" },
+  ring: { position: "absolute", right: -70, top: -50, width: 170, height: 170, borderRadius: 85, borderWidth: 30, borderColor: "#F6C3A8" },
+  heroTitle: { fontFamily: F.extrabold, fontSize: 30, lineHeight: 34, letterSpacing: -1, color: C.ink },
+  panel: { backgroundColor: C.surface, borderRadius: 22, marginHorizontal: 12, marginBottom: 4, padding: 20, alignItems: "center", gap: 14,
     shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 16, elevation: 6 },
-  speaker: { width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" },
-  recapTitle: { fontFamily: F.extrabold, fontSize: 34, lineHeight: 40, letterSpacing: -0.8, color: C.onDark },
-});
+  speaker: { width: 56, height: 56, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" },
+  recapTitle: { fontFamily: F.extrabold, fontSize: 28, lineHeight: 33, letterSpacing: -0.8, color: C.onDark },
+}));

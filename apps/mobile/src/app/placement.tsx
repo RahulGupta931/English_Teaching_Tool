@@ -2,12 +2,13 @@ import { router } from "expo-router";
 import { Check, RotateCcw } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityInfo } from "@/components/ActivityInfo";
 import { Headline, MicButton, Results, StopButton, clock } from "@/components/Speaking";
 import { Button, Card, CloseButton, Em, ErrorText, GreenCard, H1, Label, Loading, Muted, Screen, Title } from "@/components/ui";
 import { api, errorText, postFiles, wavPart } from "@/lib/api";
 import { useMic } from "@/lib/audio";
 import { useSession } from "@/lib/session";
-import { C, F } from "@/lib/theme";
+import { C, F, themed } from "@/lib/theme";
 
 type Content = { questions: string[]; max_seconds: number };
 type Graded = { level: string; score: number; scores: { grammar: number; vocabulary: number; fluency: number }; feedback: string; xp: number; transcripts: string[] };
@@ -89,7 +90,7 @@ export default function Placement() {
           </View>
         ))}
       </View>
-      <H1>Answer this <Em style={{ fontSize: 42 }}>out loud</Em></H1>
+      <H1>Answer this <Em style={{ fontSize: 34 }}>out loud</Em></H1>
       <Muted style={{ fontSize: 17 }}>Speak in a few sentences. You have up to {max} seconds.</Muted>
       <GreenCard style={{ gap: 10 }}>
         <Muted style={{ color: C.onDarkMuted }}>Question {step + 1}</Muted>
@@ -103,7 +104,7 @@ export default function Placement() {
           </>
         ) : mic.recording ? (
           <>
-            <StopButton onPress={mic.send} size={180} />
+            <StopButton onPress={mic.send} size={155} />
             <Text style={s.timer}><Text style={{ color: C.redText }}>{clock(mic.seconds)}</Text> / {clock(max)}</Text>
             <Muted>Tap to stop when you&apos;re done</Muted>
           </>
@@ -118,15 +119,16 @@ export default function Placement() {
           <Button title="Redo last step" icon={RotateCcw} tone="white" small onPress={() => setRecordings((r) => r.slice(0, -1))} />
         )}
       </View>
+      <ActivityInfo kind="placement" tips={["Answer in a few full sentences, not one word.", "Speak naturally: it's fine to pause and think.", "There are no wrong answers: we only measure your English.", "You can redo the last answer before you submit."]} />
     </Screen>
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   bar: { height: 8, borderRadius: 4 },
   stepText: { fontFamily: F.bold, fontSize: 15 },
-  question: { fontFamily: F.bold, fontSize: 28, lineHeight: 36, color: C.onDark },
-  timer: { fontFamily: F.bold, fontSize: 30, color: C.muted },
+  question: { fontFamily: F.bold, fontSize: 23, lineHeight: 30, color: C.onDark },
+  timer: { fontFamily: F.bold, fontSize: 25, color: C.muted },
   scoreName: { fontFamily: F.regular, fontSize: 17, color: C.ink },
   scoreVal: { fontFamily: F.bold, fontSize: 17, color: C.ink },
-});
+}));

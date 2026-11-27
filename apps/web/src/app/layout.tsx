@@ -19,7 +19,7 @@ const serif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "English Coach",
+  title: { default: "English Coach", template: "%s · English Coach" },
   description: "Speak English confidently with AI conversation practice, spoken feedback and games.",
 };
 

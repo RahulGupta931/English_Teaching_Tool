@@ -1,9 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { Icon } from "@/components/Icons";
+import { Check, LoaderCircle, LogOut, Search } from "lucide-react";
+import { Page, PageHeader, Tabs } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, errorText } from "@/lib/api";
-import styles from "../ui.module.css";
 
 type Plan = {
   id: number;
@@ -179,192 +185,201 @@ export default function Admin() {
     }, `Plan "${form.name}" created.`);
   }
 
-  if (token === undefined) return <main className={styles.main} />;
+  if (token === undefined) return <Page />;
   if (!token) {
     return (
-      <main className={styles.main}>
-        <form className={`${styles.card} ${styles.form}`} onSubmit={signIn}>
-          <div className={styles.pageHead}>
-            <span className={styles.eyebrow}>Admin</span>
-            <h1>Sign in</h1>
-          </div>
-          <label className={styles.field}>
-            Admin password
-            <input className={styles.input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
-          </label>
-          <button className={styles.button} disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-          <p role="alert" className={styles.error}>{message}</p>
-        </form>
-      </main>
+      <Page className="max-w-md">
+        <Card>
+          <form onSubmit={signIn} className="flex flex-col gap-(--card-spacing)">
+            <CardHeader>
+              <span className="text-xs font-semibold tracking-wider text-accent-fg uppercase">Admin</span>
+              <CardTitle className="text-2xl">Sign in</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="admin-password">Admin password</Label>
+                <Input id="admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+              </div>
+              <Button type="submit" size="lg" disabled={busy}>{busy ? <><LoaderCircle className="animate-spin" />Signing in…</> : "Sign in"}</Button>
+              <p role="alert" className="text-sm text-danger-fg empty:hidden">{message}</p>
+            </CardContent>
+          </form>
+        </Card>
+      </Page>
     );
   }
 
   const listedPlans = plans.filter((p) => p.listed);
   const interviews = (n: number | null) => (n === null ? "Unlimited" : String(n));
+  const status = (ok: boolean, yes: string, no: string) => <Badge variant={ok ? "default" : "secondary"}>{ok ? yes : no}</Badge>;
 
   return (
-    <main className={`${styles.main} ${styles.wide}`}>
-      <div className={styles.chatHead}>
-        <div className={styles.pageHead}>
-          <span className={styles.eyebrow}>Admin</span>
-          <h1>{tab === "users" ? "Users" : tab === "plans" ? "Plans" : "Payments"}</h1>
-        </div>
-        <button className={styles.ghost} onClick={() => saveToken(null)}><Icon name="logout" size={18} />Sign out</button>
-      </div>
-
-      <div className={styles.actions} role="tablist">
-        <button role="tab" aria-selected={tab === "users"} className={tab === "users" ? styles.button : styles.secondary} onClick={() => setTab("users")}>
-          <Icon name="user" size={18} />Users
-        </button>
-        <button role="tab" aria-selected={tab === "plans"} className={tab === "plans" ? styles.button : styles.secondary} onClick={() => setTab("plans")}>
-          <Icon name="grid" size={18} />Plans
-        </button>
-        <button role="tab" aria-selected={tab === "payments"} className={tab === "payments" ? styles.button : styles.secondary} onClick={() => setTab("payments")}>
-          <Icon name="zap" size={18} />Payments
-        </button>
-      </div>
-      <p role="status" aria-live="polite" className={styles.status}>{message}</p>
+    <Page>
+      <PageHeader
+        title={tab === "users" ? "Users" : tab === "plans" ? "Plans" : "Payments"}
+        subtitle="Admin"
+        actions={<Button variant="secondary" onClick={() => saveToken(null)}><LogOut />Sign out</Button>}
+      />
+      <Tabs label="Admin sections" value={tab} onChange={setTab}
+        tabs={[{ value: "users", label: `Users (${users.length})` }, { value: "plans", label: `Plans (${plans.length})` }, { value: "payments", label: `Payments (${payments.length})` }]} />
+      <p role="status" aria-live="polite" className="text-sm font-medium text-fg-2 empty:hidden">{message}</p>
 
       {tab === "users" ? (
-        <section className={styles.section}>
-          <label className={styles.field} style={{ maxWidth: 320 }}>
-            Search by name, email or mobile
-            <input className={styles.input} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="e.g. Asha or 98765" />
-          </label>
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Name</th><th>Email</th><th>Mobile</th><th>Plan</th><th>Plan ends</th><th>Interviews used / left</th><th>Level</th><th>XP</th><th>Last active</th><th>Joined</th>
-                </tr>
-              </thead>
-              <tbody>
+        <Card>
+          <CardHeader className="gap-3">
+            <div className="relative max-w-sm">
+              <Search size={16} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-fg-3" aria-hidden />
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name, email or mobile" aria-label="Search by name, email or mobile" className="pl-10" />
+            </div>
+            <CardDescription>Changing a plan starts it today and resets the user&apos;s interview count. Expired plans return to Free automatically.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Mobile</TableHead><TableHead>Plan</TableHead><TableHead>Plan ends</TableHead>
+                  <TableHead>Interviews used / left</TableHead><TableHead>Level</TableHead><TableHead>XP</TableHead><TableHead>Last active</TableHead><TableHead>Joined</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {users.map((u) => (
-                  <tr key={u.id}>
-                    <td>{u.name} {u.is_minor && <span className={styles.tag}>Under 18</span>}</td>
-                    <td>{u.email ?? "–"}</td>
-                    <td>{u.phone ?? "–"}</td>
-                    <td>
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.name} {u.is_minor && <Badge variant="secondary" className="ml-1">Under 18</Badge>}</TableCell>
+                    <TableCell>{u.email ?? "–"}</TableCell>
+                    <TableCell>{u.phone ?? "–"}</TableCell>
+                    <TableCell>
                       <select
-                        className={styles.input}
                         value={u.plan_id}
                         disabled={busy}
                         onChange={(e) => switchPlan(u, Number(e.target.value))}
                         aria-label={`Plan for ${u.name}`}
+                        className="h-9 cursor-pointer rounded-input border border-input bg-surface px-2.5 text-sm"
                       >
                         {!listedPlans.some((p) => p.id === u.plan_id) && <option value={u.plan_id}>{u.plan_name} (unlisted)</option>}
                         {listedPlans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                       </select>
-                    </td>
-                    <td>{u.plan_expires ?? "Never"}</td>
-                    <td>{u.interviews_used} / {interviews(u.interviews_left)}</td>
-                    <td>{u.level ?? "–"}</td>
-                    <td>{u.xp}</td>
-                    <td>{u.last_active ?? "–"}</td>
-                    <td>{u.created_at.slice(0, 10)}</td>
-                  </tr>
+                    </TableCell>
+                    <TableCell>{u.plan_expires ?? "Never"}</TableCell>
+                    <TableCell>{u.interviews_used} / {interviews(u.interviews_left)}</TableCell>
+                    <TableCell className="capitalize">{u.level ?? "–"}</TableCell>
+                    <TableCell className="tabular-nums">{u.xp}</TableCell>
+                    <TableCell>{u.last_active ?? "–"}</TableCell>
+                    <TableCell>{u.created_at.slice(0, 10)}</TableCell>
+                  </TableRow>
                 ))}
-                {users.length === 0 && <tr><td colSpan={10} className={styles.muted}>No users found.</td></tr>}
-              </tbody>
-            </table>
-          </div>
-          <p className={`${styles.muted} ${styles.small}`}>Changing a plan starts it today and resets the user&apos;s interview count. Expired plans return to Free automatically.</p>
-        </section>
+                {users.length === 0 && <TableRow><TableCell colSpan={10} className="py-8 text-center text-fg-2">No users found.</TableCell></TableRow>}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       ) : tab === "plans" ? (
         <>
-          <section className={styles.section}>
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Plan</th><th>Price</th><th>Length</th><th>Interviews</th><th>Speaking / day</th><th>Voice</th><th>Users</th><th>Status</th><th></th>
-                  </tr>
-                </thead>
-                <tbody>
+          <Card>
+            <CardHeader>
+              <CardDescription>Unlisting stops a plan being given to more users; people already on it keep it until it ends. Plans can&apos;t be edited: create a new one and unlist the old one.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Plan</TableHead><TableHead>Price</TableHead><TableHead>Length</TableHead><TableHead>Interviews</TableHead><TableHead>Speaking / day</TableHead>
+                    <TableHead>Voice</TableHead><TableHead>Users</TableHead><TableHead>Status</TableHead><TableHead><span className="sr-only">Actions</span></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {plans.map((p) => (
-                    <tr key={p.id}>
-                      <td><strong>{p.name}</strong></td>
-                      <td>₹{p.price_inr}</td>
-                      <td>{p.days ? `${p.days} days` : "Forever"}</td>
-                      <td>{interviews(p.interviews)}</td>
-                      <td>{p.daily_minutes} min</td>
-                      <td>{p.azure_voice ? "Azure" : "Browser"}</td>
-                      <td>{p.users}</td>
-                      <td>{p.listed ? <span className={`${styles.tag} ${styles.good}`}>Listed</span> : <span className={styles.tag}>Unlisted</span>}</td>
-                      <td>
-                        {p.id !== 1 && (
-                          <button className={styles.ghost} disabled={busy} onClick={() => setListed(p, !p.listed)}>
-                            {p.listed ? "Unlist" : "Relist"}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
+                    <TableRow key={p.id}>
+                      <TableCell className="font-semibold">{p.name}</TableCell>
+                      <TableCell>₹{p.price_inr}</TableCell>
+                      <TableCell>{p.days ? `${p.days} days` : "Forever"}</TableCell>
+                      <TableCell>{interviews(p.interviews)}</TableCell>
+                      <TableCell>{p.daily_minutes} min</TableCell>
+                      <TableCell>{p.azure_voice ? "Azure" : "Browser"}</TableCell>
+                      <TableCell className="tabular-nums">{p.users}</TableCell>
+                      <TableCell>{status(!!p.listed, "Listed", "Unlisted")}</TableCell>
+                      <TableCell className="text-right">
+                        {p.id !== 1 && <Button variant="ghost" size="sm" disabled={busy} onClick={() => setListed(p, !p.listed)}>{p.listed ? "Unlist" : "Relist"}</Button>}
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
-            <p className={`${styles.muted} ${styles.small}`}>Unlisting stops a plan being given to more users; people already on it keep it until it ends. Plans can&apos;t be edited: create a new one and unlist the old one.</p>
-          </section>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
 
-          <form className={`${styles.card} ${styles.form}`} onSubmit={createPlan}>
-            <h2>Create a plan</h2>
-            <label className={styles.field}>
-              Name
-              <input className={styles.input} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required minLength={2} maxLength={40} />
-            </label>
-            <label className={styles.field}>
-              Price (₹)
-              <input className={styles.input} type="number" min={0} value={form.price_inr} onChange={(e) => setForm({ ...form, price_inr: e.target.value })} required />
-            </label>
-            <label className={styles.field}>
-              Length (days)
-              <input className={styles.input} type="number" min={1} value={form.days} onChange={(e) => setForm({ ...form, days: e.target.value })} required placeholder="e.g. 90 for 3 months" />
-            </label>
-            <label className={styles.field}>
-              Interviews included
-              <span className={styles.hint}>Leave empty for unlimited</span>
-              <input className={styles.input} type="number" min={0} value={form.interviews} onChange={(e) => setForm({ ...form, interviews: e.target.value })} />
-            </label>
-            <label className={styles.field}>
-              Speaking minutes per day
-              <input className={styles.input} type="number" min={1} max={240} value={form.daily_minutes} onChange={(e) => setForm({ ...form, daily_minutes: e.target.value })} required />
-            </label>
-            <label className={styles.check}>
-              <input type="checkbox" checked={form.azure_voice} onChange={(e) => setForm({ ...form, azure_voice: e.target.checked })} />
-              <span>Azure voice (unticked: the browser&apos;s free built-in voice)</span>
-            </label>
-            <button className={styles.button} disabled={busy}><Icon name="check" size={18} />Create plan</button>
-          </form>
+          <Card className="max-w-xl">
+            <form onSubmit={createPlan} className="flex flex-col gap-(--card-spacing)">
+              <CardHeader><CardTitle>Create a plan</CardTitle></CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                <Field id="plan-name" label="Name" className="sm:col-span-2">
+                  <Input id="plan-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required minLength={2} maxLength={40} />
+                </Field>
+                <Field id="plan-price" label="Price (₹)">
+                  <Input id="plan-price" type="number" min={0} value={form.price_inr} onChange={(e) => setForm({ ...form, price_inr: e.target.value })} required />
+                </Field>
+                <Field id="plan-days" label="Length (days)">
+                  <Input id="plan-days" type="number" min={1} value={form.days} onChange={(e) => setForm({ ...form, days: e.target.value })} required placeholder="e.g. 90 for 3 months" />
+                </Field>
+                <Field id="plan-interviews" label="Interviews included" hint="Leave empty for unlimited">
+                  <Input id="plan-interviews" type="number" min={0} value={form.interviews} onChange={(e) => setForm({ ...form, interviews: e.target.value })} />
+                </Field>
+                <Field id="plan-minutes" label="Speaking minutes per day">
+                  <Input id="plan-minutes" type="number" min={1} max={240} value={form.daily_minutes} onChange={(e) => setForm({ ...form, daily_minutes: e.target.value })} required />
+                </Field>
+                <label className="flex items-center gap-3 rounded-tile bg-raised p-4 text-sm sm:col-span-2">
+                  <input type="checkbox" checked={form.azure_voice} onChange={(e) => setForm({ ...form, azure_voice: e.target.checked })} className="size-4 accent-[var(--ring)]" />
+                  Azure voice (unticked: the browser&apos;s free built-in voice)
+                </label>
+                <Button type="submit" disabled={busy} className="sm:col-span-2 sm:justify-self-start"><Check />Create plan</Button>
+              </CardContent>
+            </form>
+          </Card>
         </>
       ) : (
-        <section className={styles.section}>
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Date</th><th>User</th><th>Plan</th><th>Amount</th><th>Status</th><th>Result</th><th>Razorpay payment</th><th>Razorpay order</th>
-                </tr>
-              </thead>
-              <tbody>
+        <Card>
+          <CardHeader>
+            <CardDescription>&quot;Not paid&quot; means checkout was opened but not completed. Refunds are made from the Razorpay dashboard.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead><TableHead>User</TableHead><TableHead>Plan</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead>
+                  <TableHead>Result</TableHead><TableHead>Razorpay payment</TableHead><TableHead>Razorpay order</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {payments.map((p) => (
-                  <tr key={p.id}>
-                    <td>{(p.paid_at ?? p.created_at).slice(0, 16)}</td>
-                    <td>{p.user_name ?? <span className={styles.muted}>Deleted account</span>}{p.email && <div className={`${styles.muted} ${styles.small}`}>{p.email}</div>}</td>
-                    <td>{p.plan_name}</td>
-                    <td>₹{p.amount_paise / 100}</td>
-                    <td>{p.status === "paid" ? <span className={`${styles.tag} ${styles.good}`}>Paid</span> : <span className={styles.tag}>Not paid</span>}</td>
-                    <td>{p.outcome === "queued" ? "Starts after current plan" : p.outcome === "activated" ? "Started" : "–"}</td>
-                    <td>{p.razorpay_payment_id ?? "–"}</td>
-                    <td>{p.razorpay_order_id}</td>
-                  </tr>
+                  <TableRow key={p.id}>
+                    <TableCell>{(p.paid_at ?? p.created_at).slice(0, 16)}</TableCell>
+                    <TableCell>
+                      {p.user_name ?? <span className="text-fg-2">Deleted account</span>}
+                      {p.email && <div className="text-xs text-fg-2">{p.email}</div>}
+                    </TableCell>
+                    <TableCell>{p.plan_name}</TableCell>
+                    <TableCell className="tabular-nums">₹{p.amount_paise / 100}</TableCell>
+                    <TableCell>{status(p.status === "paid", "Paid", "Not paid")}</TableCell>
+                    <TableCell>{p.outcome === "queued" ? "Starts after current plan" : p.outcome === "activated" ? "Started" : "–"}</TableCell>
+                    <TableCell className="font-mono text-xs">{p.razorpay_payment_id ?? "–"}</TableCell>
+                    <TableCell className="font-mono text-xs">{p.razorpay_order_id}</TableCell>
+                  </TableRow>
                 ))}
-                {payments.length === 0 && <tr><td colSpan={8} className={styles.muted}>No payments yet.</td></tr>}
-              </tbody>
-            </table>
-          </div>
-          <p className={`${styles.muted} ${styles.small}`}>&quot;Not paid&quot; means checkout was opened but not completed. Refunds are made from the Razorpay dashboard.</p>
-        </section>
+                {payments.length === 0 && <TableRow><TableCell colSpan={8} className="py-8 text-center text-fg-2">No payments yet.</TableCell></TableRow>}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
-    </main>
+    </Page>
+  );
+}
+
+function Field({ id, label, hint, className, children }: { id: string; label: string; hint?: string; className?: string; children: React.ReactNode }) {
+  return (
+    <div className={`flex flex-col gap-1.5 ${className ?? ""}`}>
+      <Label htmlFor={id}>{label}</Label>
+      {children}
+      {hint && <span className="text-xs text-fg-2">{hint}</span>}
+    </div>
   );
 }

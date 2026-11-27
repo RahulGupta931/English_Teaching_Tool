@@ -2,13 +2,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Check, Lock, RotateCcw, Volume1 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityInfo } from "@/components/ActivityInfo";
 import { TWISTER_LEVEL_KEY } from "@/components/PracticeList";
 import { MicButton, StopButton, clock } from "@/components/Speaking";
 import { Body, Button, Card, Chip, ErrorText, GreenCard, Header, Muted, Screen, Title } from "@/components/ui";
 import { api, errorText, postAudio } from "@/lib/api";
 import { playAudio, useMic } from "@/lib/audio";
 import { useSession } from "@/lib/session";
-import { C, F } from "@/lib/theme";
+import { C, F, themed } from "@/lib/theme";
 
 type Twister = { level: number; levels: number; id: number; text: string; pool_size: number; target_seconds: number; audio: string | null };
 type Result = {
@@ -71,9 +72,14 @@ export default function TongueTwister() {
   return (
     <Screen scroll footer={
       <View style={s.bottom}>
-        <Button title="Try again" tone="white" small onPress={() => setResult(null)} disabled={!result || mic.recording} />
-        {mic.recording ? <StopButton onPress={mic.send} size={112} /> : <MicButton onPress={() => { setResult(null); mic.start(); }} disabled={!twister || busy} />}
-        <Button title="Next level" tone="mint" small onPress={() => go(level + 1)} disabled={!result?.next_level || mic.recording} />
+        {/* Try again / Next level appear only once there is a result, so the idle screen shows just the mic */}
+        <View style={{ flex: 1, alignItems: "flex-start" }}>
+          {result && !mic.recording && <Button title="Try again" tone="white" small onPress={() => setResult(null)} />}
+        </View>
+        {mic.recording ? <StopButton onPress={mic.send} size={96} /> : <MicButton onPress={() => { setResult(null); mic.start(); }} disabled={!twister || busy} />}
+        <View style={{ flex: 1, alignItems: "flex-end" }}>
+          {result?.next_level && !mic.recording && <Button title="Next level" tone="mint" small onPress={() => go(level + 1)} />}
+        </View>
       </View>
     }>
       <Header title="Tongue Twister" />
@@ -83,8 +89,8 @@ export default function TongueTwister() {
           const open = n <= unlocked;
           return (
             <Pressable key={n} accessibilityRole="button" accessibilityLabel={open ? `Level ${n}` : `Level ${n}, locked`} disabled={!open || mic.recording}
-              onPress={() => go(n)} style={[s.level, { backgroundColor: n === level ? C.ink : open ? C.mint : "#fff" }]}>
-              {open ? <Text style={[s.levelText, n === level && { color: "#fff" }]}>{n}</Text> : <Lock size={20} color={C.muted} />}
+              onPress={() => go(n)} style={[s.level, { backgroundColor: n === level ? C.ink : open ? C.mintTile : C.surface }]}>
+              {open ? <Text style={[s.levelText, n === level && { color: C.onInk }]}>{n}</Text> : <Lock size={20} color={C.muted} />}
             </Pressable>
           );
         })}
@@ -105,16 +111,19 @@ export default function TongueTwister() {
       </GreenCard>
       <ErrorText>{error}</ErrorText>
 
-      {mic.recording && <Muted style={{ textAlign: "center", fontSize: 18 }}>Recording… {clock(mic.seconds)}</Muted>}
+      {mic.recording && <Muted style={{ textAlign: "center", fontSize: 15 }}>Recording… {clock(mic.seconds)}</Muted>}
+      {!mic.recording && !busy && !result && twister && (
+        <Muted style={{ textAlign: "center" }}>{listened ? "Now tap the mic and say it clearly, as fast as you can." : "Tap Listen once to hear it, then tap the mic and say it."}</Muted>
+      )}
       {busy && <ActivityIndicator color={C.green} />}
       {result && (
         <Card style={{ gap: 14 }}>
           <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
             <View style={[s.badge, !result.passed && { backgroundColor: C.peachSoft }]}>
-              {result.passed ? <Check size={28} color={C.ink} /> : <RotateCcw size={24} color={C.ink} />}
+              {result.passed ? <Check size={28} color={C.onMint} /> : <RotateCcw size={24} color={C.ink} />}
             </View>
             <View style={{ flex: 1 }}>
-              <Title style={{ fontSize: 22 }}>{result.passed ? "Nicely done!" : "Almost there"}</Title>
+              <Title style={{ fontSize: 18 }}>{result.passed ? "Nicely done!" : "Almost there"}</Title>
               <Muted>{result.next_level ? `Level ${result.next_level} unlocked · ` : result.passed ? "" : "Get 80% of words right to unlock the next level · "}+{result.xp} XP</Muted>
             </View>
           </View>
@@ -125,17 +134,20 @@ export default function TongueTwister() {
           <Body><Text style={{ fontFamily: F.bold }}>We heard: </Text>&quot;{result.transcript}&quot;</Body>
         </Card>
       )}
+      {!result && !mic.recording && !busy && (
+        <ActivityInfo kind="tongue_twister" tips={["Listen once, then say it slowly and clearly first.", "Speed comes after accuracy: aim for 80% of words.", "Open your mouth wide on the vowels.", "Pass a level to unlock the next one."]} />
+      )}
     </Screen>
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   level: { width: 64, height: 64, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  levelText: { fontFamily: F.bold, fontSize: 20, color: C.ink },
-  twister: { fontFamily: F.bold, fontSize: 30, lineHeight: 38, color: C.onDark },
+  levelText: { fontFamily: F.bold, fontSize: 16, color: C.ink },
+  twister: { fontFamily: F.bold, fontSize: 25, lineHeight: 31, color: C.onDark },
   cardChip: { paddingHorizontal: 18, paddingVertical: 12 },
-  badge: { width: 64, height: 64, borderRadius: 32, backgroundColor: C.mint, alignItems: "center", justifyContent: "center" },
+  badge: { width: 64, height: 64, borderRadius: 22, backgroundColor: C.mint, alignItems: "center", justifyContent: "center" },
   stat: { flex: 1, backgroundColor: C.grey, borderRadius: 20, padding: 16 },
-  statValue: { fontFamily: F.extrabold, fontSize: 30, color: C.ink },
+  statValue: { fontFamily: F.extrabold, fontSize: 25, color: C.ink },
   bottom: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-});
+}));

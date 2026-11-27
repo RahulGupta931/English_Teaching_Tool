@@ -1,14 +1,18 @@
 "use client";
 
+import { ActivityAside, WithAside } from "@/components/ActivityAside";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Icon } from "@/components/Icons";
+import { ArrowRight, GraduationCap, LoaderCircle, Mic, RotateCcw, ShieldCheck, Sparkles, Volume2 } from "lucide-react";
+import { ChatBubble, TypingBubble } from "@/components/Chat";
 import { RecordButton } from "@/components/RecordButton";
 import { MistakeList, XpBadge } from "@/components/Results";
-import { Segmented } from "@/components/ui";
-import { api, errorText, playAudio, postAudio, postJson, useRequireLogin, type Mistake, type User } from "@/lib/api";
+import { Page, PageHeader, Segmented } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { api, errorText, playAudio, postAudio, postJson, useRequireLogin, type Mistake, type User, getMe } from "@/lib/api";
 import { useHandsFree } from "@/lib/useHandsFree";
-import styles from "../ui.module.css";
 
 type Lang = "english" | "hinglish";
 type Reply = { reply: string; audio: string | null; turns_left: number; transcript?: string; session_id?: number };
@@ -44,7 +48,7 @@ export default function Coach() {
 
   useEffect(() => {
     const plays = playId;
-    api<{ user: User; mistakes: Mistake[] }>("/v1/me").then((r) => {
+    getMe<{ user: User; mistakes: Mistake[] }>().then((r) => {
       setMistakes(r.mistakes);
       setLang(r.user.explain_lang === "hinglish" ? "hinglish" : "english");
     }).catch((e) => setMessage(errorText(e)));
@@ -128,105 +132,109 @@ export default function Coach() {
     setSessionId(null);
     setLines([]);
     setSpeaking(false);
-    api<{ mistakes: Mistake[] }>("/v1/me").then((r) => setMistakes(r.mistakes)).catch(() => {});
+    getMe<{ mistakes: Mistake[] }>().then((r) => setMistakes(r.mistakes)).catch(() => {});
   }
 
   if (recap) {
     return (
-      <main className={styles.main}>
-        <section className={`${styles.card} ${styles.result}`} aria-label="Your recap">
-          <span className={styles.eyebrow}>Mistake Coach recap</span>
-          <p>{recap.summary}</p>
-          <div className={styles.actions}>
-            <XpBadge xp={recap.xp} />
-            <button className={styles.iconButton} onClick={() => say(recap.audio, recap.summary, false)} aria-label="Play recap again">
-              <Icon name="speaker" size={16} />
-            </button>
-          </div>
-        </section>
+      <Page className="max-w-3xl">
+        <PageHeader title="Mistake Coach recap" subtitle="Here's what you worked on in this session." />
+        <Card aria-label="Your recap">
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-base leading-relaxed">{recap.summary}</p>
+            <div className="flex items-center gap-3">
+              <XpBadge xp={recap.xp} />
+              <Button variant="secondary" size="sm" onClick={() => say(recap.audio, recap.summary, false)} aria-label="Play recap again"><Volume2 />Play recap</Button>
+            </div>
+          </CardContent>
+        </Card>
         {recap.mistakes.length > 0 && (
-          <section className={styles.section} aria-labelledby="new-heading">
-            <h2 id="new-heading">New things to work on</h2>
-            <MistakeList mistakes={recap.mistakes} />
-          </section>
+          <Card aria-labelledby="new-heading">
+            <CardHeader><CardTitle id="new-heading">New things to work on</CardTitle></CardHeader>
+            <CardContent><MistakeList mistakes={recap.mistakes} /></CardContent>
+          </Card>
         )}
-        <div className={styles.actions}>
-          <button className={styles.button} onClick={reset}><Icon name="retry" size={18} />Practise again</button>
-          <Link href="/" className={styles.secondary}>Home</Link>
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={reset}><RotateCcw />Practise again</Button>
+          <Link href="/" className={buttonVariants({ variant: "secondary" })}>Home</Link>
         </div>
-      </main>
+      </Page>
     );
   }
 
   if (sessionId === null) {
     const none = mistakes !== null && mistakes.length === 0;
     return (
-      <main className={styles.main}>
-        <div className={styles.pageHead}>
-          <span className={styles.eyebrow}>Mistake Coach</span>
-          <h1>Fix your recent mistakes</h1>
-          <p className={styles.muted}>Talk with your coach about the mistakes you made recently. It explains each one, you say it the right way, and it checks you. Hands-free: just speak, and it listens when the coach stops talking.</p>
-        </div>
-        <div className={styles.actions}>
-          <span className={styles.muted}>Explain in</span>
-          <Segmented label="Explanation language" value={lang} options={LANGS} onChange={setLang} />
-        </div>
+      <Page>
+        <PageHeader
+          title="Fix your recent mistakes"
+          subtitle="Your coach explains each mistake, you say it the right way, and it checks you. Hands-free: it listens when the coach stops talking."
+        />
+      <WithAside aside={<ActivityAside kind="coach" speaking={true} tips={["Say each corrected sentence out loud, slowly at first.", "Ask the coach to explain again if anything is unclear.", "Switch to Hinglish explanations anytime.", "Finish to get a recap of what you fixed."]} />}>
+        <Card className="bg-linear-to-br from-hero to-hero-2 text-on-dark">
+          <CardContent className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="grid size-12 place-items-center rounded-xl bg-peach text-on-mint"><GraduationCap size={24} aria-hidden /></span>
+              <div>
+                <p className="font-semibold">Explanations in</p>
+                <p className="text-sm text-on-dark-2">Pick the language your coach explains in</p>
+              </div>
+            </div>
+            <Segmented label="Explanation language" value={lang} options={LANGS} onChange={setLang} />
+          </CardContent>
+        </Card>
+
         {none ? (
-          <p className={styles.note}>
-            <Icon name="sparkles" size={18} />
-            No saved mistakes yet. Do a <Link href="/roleplay">role-play</Link>, <Link href="/jam">JAM</Link> or <Link href="/quiz">quiz</Link> first, then come back.
-          </p>
+          <Card>
+            <CardContent className="flex items-start gap-3 text-sm">
+              <Sparkles size={20} className="shrink-0 text-coral" aria-hidden />
+              <p>No saved mistakes yet. Do a <Link href="/roleplay" className="font-semibold text-link underline">role-play</Link>, <Link href="/jam" className="font-semibold text-link underline">JAM</Link> or <Link href="/quiz" className="font-semibold text-link underline">quiz</Link> first, then come back.</p>
+            </CardContent>
+          </Card>
         ) : mistakes && (
-          <section className={styles.section} aria-labelledby="recent-heading">
-            <h2 id="recent-heading">You&apos;ll practise mistakes like these</h2>
-            <MistakeList mistakes={mistakes.slice(0, 3)} />
-          </section>
+          <Card aria-labelledby="recent-heading">
+            <CardHeader>
+              <CardTitle id="recent-heading">You&apos;ll practise mistakes like these</CardTitle>
+              <CardDescription>{mistakes.length} saved from your practice</CardDescription>
+            </CardHeader>
+            <CardContent><MistakeList mistakes={mistakes.slice(0, 3)} /></CardContent>
+            <CardFooter className="flex-col items-start gap-3 border-t border-line pt-(--card-spacing)">
+              <Button size="lg" onClick={start} disabled={busy || !mistakes || none}>
+                {busy ? <LoaderCircle className="animate-spin" /> : <Mic />}Start coaching
+              </Button>
+              <p className="flex items-center gap-2 text-xs text-fg-2"><ShieldCheck size={16} aria-hidden />Your microphone opens only while it&apos;s your turn to speak.</p>
+            </CardFooter>
+          </Card>
         )}
-        <button className={styles.button} onClick={start} disabled={busy || !mistakes || none}>
-          {busy ? <Icon name="loader" size={18} className={styles.spin} /> : <Icon name="mic" size={18} />}Start coaching
-        </button>
-        <p className={styles.note}><Icon name="shield" size={18} />Your microphone opens only while it&apos;s your turn to speak.</p>
-        <p role="status" aria-live="polite" className={styles.status}>{busy ? "Starting your session…" : message}</p>
-      </main>
+        <p role="status" aria-live="polite" className="min-h-5 text-sm text-fg-2">{busy ? "Starting your session…" : message}</p>
+      </WithAside>
+      </Page>
     );
   }
 
   const label = turnsLeft === 0 ? "No turns left" : speaking ? "Coach is speaking…" : "Tap to speak";
   return (
-    <main className={styles.main}>
-      <div className={styles.chatHead}>
-        <div className={styles.pageHead}>
-          <span className={styles.eyebrow}>Mistake Coach · {lang === "hinglish" ? "Hinglish" : "English"}</span>
-          <h1>Your coaching session</h1>
-        </div>
-        <span className={styles.chip}>{turnsLeft} {turnsLeft === 1 ? "turn" : "turns"} left</span>
-      </div>
+    <Page className="max-w-3xl">
+      <PageHeader
+        title="Your coaching session"
+        subtitle={`Explaining in ${lang === "hinglish" ? "Hinglish" : "English"}`}
+        actions={<Badge variant="secondary" className="h-8 px-3 text-sm">{turnsLeft} {turnsLeft === 1 ? "turn" : "turns"} left</Badge>}
+      />
 
-      <div className={styles.chat} aria-live="polite" aria-label="Conversation">
-        {lines.map((l, i) => (
-          <div key={i} className={`${styles.msg} ${l.mine ? styles.mine : ""}`}>
-            <span className={styles.avatar}><Icon name={l.mine ? "user" : "bot"} size={18} title={l.mine ? "You" : "Coach"} /></span>
-            <div className={styles.bubble}>
-              <span>{l.text}</span>
-              {!l.mine && (
-                <button className={styles.iconButton} onClick={() => { pause(); say(l.audio, l.text, false); }}
-                        disabled={listener.listening} aria-label="Play again">
-                  <Icon name="speaker" size={16} />
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-        {busy && (
-          <div className={styles.msg}>
-            <span className={styles.avatar}><Icon name="bot" size={18} /></span>
-            <div className={styles.bubble}><span className={styles.typing} aria-label="Thinking"><i /><i /><i /></span></div>
-          </div>
-        )}
-        <div ref={endRef} />
-      </div>
+      <Card className="min-h-[50dvh]">
+        <CardContent aria-live="polite" aria-label="Conversation" className="flex flex-col gap-4">
+          {lines.map((l, i) => (
+            <ChatBubble key={i} mine={l.mine} who="Coach" replayDisabled={listener.listening}
+              onReplay={l.mine ? undefined : () => { pause(); say(l.audio, l.text, false); }}>
+              {l.text}
+            </ChatBubble>
+          ))}
+          {busy && <TypingBubble who="Coach" />}
+          <div ref={endRef} />
+        </CardContent>
+      </Card>
 
-      <div className={styles.dock}>
+      <div className="sticky bottom-[calc(var(--tabbar-height)+env(safe-area-inset-bottom))] z-10 flex flex-col items-center gap-3 rounded-card bg-surface/90 p-4 shadow-pop ring-1 ring-line backdrop-blur-xl lg:bottom-4">
         <RecordButton
           recording={listener.listening}
           busy={busy}
@@ -238,16 +246,16 @@ export default function Coach() {
           stopLabel="Listening… tap to send now"
           busyLabel="Thinking…"
         />
-        {handsFree && turnsLeft > 0 ? (
-          <button onClick={pause} disabled={busy} className={styles.ghost}>Pause hands-free</button>
-        ) : (
-          <span className={styles.muted}>{turnsLeft > 0 ? "Hands-free is paused. Tap the mic to carry on." : "That's all the turns for this session."}</span>
-        )}
-        <button onClick={finish} disabled={busy || lines.length < 2} className={styles.ghost}>
-          Finish &amp; get recap <Icon name="arrow" size={18} />
-        </button>
-        <p role="status" aria-live="polite" className={styles.status}>{message}</p>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {handsFree && turnsLeft > 0 ? (
+            <Button variant="ghost" size="sm" onClick={pause} disabled={busy}>Pause hands-free</Button>
+          ) : (
+            <span className="text-xs text-fg-2">{turnsLeft > 0 ? "Hands-free is paused. Tap the mic to carry on." : "That's all the turns for this session."}</span>
+          )}
+          <Button variant="secondary" size="sm" onClick={finish} disabled={busy || lines.length < 2}>Finish &amp; get recap <ArrowRight /></Button>
+        </div>
+        <p role="status" aria-live="polite" className="text-sm text-danger-fg empty:hidden">{message}</p>
       </div>
-    </main>
+    </Page>
   );
 }

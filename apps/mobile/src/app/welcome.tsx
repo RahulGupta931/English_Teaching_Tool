@@ -8,7 +8,7 @@ import { Button, Em, ErrorText, Muted } from "@/components/ui";
 import { signInWithGoogle } from "@/lib/google";
 import { errorText } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
-import { C, F } from "@/lib/theme";
+import { C, F, themed } from "@/lib/theme";
 
 export default function Welcome() {
   const [busy, setBusy] = useState(false);
@@ -33,9 +33,9 @@ export default function Welcome() {
           <View style={s.blob}>
             <View style={[s.bubble, { top: 30, left: -50 }]}><Text style={s.bubbleText}>“I am a student”</Text></View>
             <Mic size={46} color={C.ink} strokeWidth={2} />
-            <View style={[s.bubble, { bottom: 18, right: -50, backgroundColor: C.mint }]}><Text style={s.bubbleText}>+40 XP</Text></View>
+            <View style={[s.bubble, { bottom: 18, right: -50, backgroundColor: C.mint }]}><Text style={[s.bubbleText, { color: C.onMint }]}>+40 XP</Text></View>
           </View>
-          <Text style={s.title}>Speak English{"\n"}with <Em style={{ color: C.mint, fontSize: 52 }}>confidence</Em></Text>
+          <Text style={s.title}>Speak English{"\n"}with <Em style={{ color: C.mint, fontSize: 43 }}>confidence</Em></Text>
           <Text style={s.sub}>Talk with an AI partner, get instant spoken feedback, and play a word game every day.</Text>
         </View>
       </SafeAreaView>
@@ -52,13 +52,13 @@ export default function Welcome() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themed(() => StyleSheet.create({
   hero: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, gap: 22 },
   blob: { width: 200, height: 200, borderRadius: 100, backgroundColor: C.mint, alignItems: "center", justifyContent: "center", marginBottom: 12 },
-  bubble: { position: "absolute", backgroundColor: "#fff", borderRadius: 999, paddingHorizontal: 16, paddingVertical: 8 },
+  bubble: { position: "absolute", backgroundColor: C.surface, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 8 },
   bubbleText: { fontFamily: F.bold, fontSize: 15, color: C.ink },
-  title: { fontFamily: F.extrabold, fontSize: 44, lineHeight: 52, letterSpacing: -1.2, color: C.onDark, textAlign: "center" },
-  sub: { fontFamily: F.regular, fontSize: 17, lineHeight: 25, color: C.onDarkMuted, textAlign: "center" },
+  title: { fontFamily: F.extrabold, fontSize: 36, lineHeight: 43, letterSpacing: -1.2, color: C.onDark, textAlign: "center" },
+  sub: { fontFamily: F.regular, fontSize: 17, lineHeight: 20, color: C.onDarkMuted, textAlign: "center" },
   sheet: { backgroundColor: C.bg, borderTopLeftRadius: 36, borderTopRightRadius: 36, padding: 22, gap: 14 },
   have: { fontFamily: F.regular, fontSize: 16, color: C.muted, textAlign: "center" },
-});
+}));

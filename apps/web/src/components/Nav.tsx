@@ -5,15 +5,18 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Flame, LogOut, Mic, Moon, Search, Sun, Zap, type LucideIcon } from "lucide-react";
-import { api, signOut, useToken, type User } from "@/lib/api";
+import { getMe, signOut, useToken, type User } from "@/lib/api";
 import { toggleTheme, useTheme } from "@/lib/theme";
 import { cn, Pill, Tooltip } from "@/components/ui";
 import { NAV, openPalette } from "./navItems";
 
+// Short numbers so they fit beside an icon in the 56px rail: 1250 -> "1.3k".
+const compact = (n: number) => new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n);
+
 const isActive = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 const spring = { type: "spring", stiffness: 500, damping: 40 } as const;
 
-/** Left icon rail (1024px and up), mobile top bar and bottom bar, and the XP/streak pills. */
+/** Desktop sidebar (1024px and up), phone header and docked bottom bar, and the XP/streak pills. */
 export function Nav() {
   const token = useToken();
   const pathname = usePathname();
@@ -23,7 +26,7 @@ export function Nav() {
   useEffect(() => {
     if (!token) return;
     let live = true;
-    api<{ user: User }>("/v1/me").then((r) => live && setUser(r.user)).catch(() => {});
+    getMe<{ user: User }>().then((r) => live && setUser(r.user)).catch(() => {});
     return () => { live = false; };
   }, [token, pathname]);
 
@@ -37,26 +40,19 @@ export function Nav() {
   return (
     <>
       {skip}
-      <Rail signedIn pathname={pathname} />
+      <Sidebar pathname={pathname} user={shownUser} />
 
-      {/* Mobile / tablet top bar */}
-      <header className="flex items-center gap-3 px-4 pt-4 lg:hidden">
-        <Link href="/" aria-label="English Coach home" className="grid size-10 place-items-center rounded-full bg-linear-to-br from-hero to-hero-2 text-mint">
-          <Mic size={20} aria-hidden />
+      {/* Phone / tablet: sticky header with brand, XP and streak, theme */}
+      <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-line bg-surface/85 px-4 py-3 backdrop-blur-xl lg:hidden">
+        <Link href="/" aria-label="English Coach home" className="flex items-center gap-2.5">
+          <Brand />
+          <span className="font-semibold tracking-[-0.01em]">English Coach</span>
         </Link>
-        <span className="font-semibold tracking-[-0.01em]">English Coach</span>
         <div className="ml-auto flex items-center gap-2">
           {shownUser && <Stats user={shownUser} />}
-          <ThemeButton className="size-9 bg-surface text-fg-2 shadow-card" />
+          <ThemeButton className="size-9 text-fg-2 hover:bg-hover hover:text-fg" />
         </div>
       </header>
-
-      {/* Desktop XP/streak, top right of the content area (Home shows them as cards) */}
-      {shownUser && pathname !== "/" && (
-        <div className="pointer-events-none absolute top-8 right-8 z-10 hidden lg:flex">
-          <Stats user={shownUser} />
-        </div>
-      )}
 
       {token && <BottomBar pathname={pathname} />}
     </>
@@ -125,71 +121,131 @@ function ThemeButton({ className }: { className?: string }) {
   );
 }
 
-function RailButton({ icon: I, label, active, href, onClick, layoutId }: { icon: LucideIcon; label: string; active?: boolean; href?: string; onClick?: () => void; layoutId?: string }) {
+/** Logo mark: the green mic circle used across the app. */
+const Brand = () => (
+  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-linear-to-br from-hero to-hero-2 text-mint shadow-card">
+    <Mic size={18} strokeWidth={2.4} aria-hidden />
+  </span>
+);
+
+/** One sidebar link: icon + label. Below 1280px only the icon shows, with a tooltip. */
+function SideLink({ icon: I, label, href, active, onClick }: { icon: LucideIcon; label: string; href?: string; active?: boolean; onClick?: () => void }) {
+  const cls = cn(
+    "group relative flex h-10 w-full cursor-pointer items-center justify-center gap-3 rounded-xl px-0 text-sm font-medium transition-colors duration-150 xl:justify-start xl:px-3",
+    active ? "text-fg" : "text-fg-2 hover:bg-hover hover:text-fg",
+  );
   const inner = (
     <>
-      {active && (
-        <motion.span layoutId={layoutId} transition={spring} className="absolute inset-0 rounded-full bg-mint shadow-[0_6px_20px_rgb(126_232_181/0.35)]">
-          <span className="absolute top-1/2 -right-1.5 h-5 w-1 -translate-y-1/2 rounded-full bg-mint" />
-        </motion.span>
-      )}
-      <I size={20} aria-hidden className="relative" />
+      {active && <motion.span layoutId="side-active" transition={spring} className="absolute inset-0 rounded-xl bg-mint/15 ring-1 ring-mint/30" />}
+      {active && <span aria-hidden className="absolute top-2 bottom-2 -left-3 w-1 rounded-r-full bg-mint-hover" />}
+      <I size={18} aria-hidden className={cn("relative shrink-0", active && "text-accent-fg")} />
+      <span className="relative hidden truncate xl:inline">{label}</span>
     </>
   );
-  const cls = cn(
-    "relative grid size-11 cursor-pointer place-items-center rounded-full transition-colors duration-150",
-    active ? "text-on-mint" : "text-on-dark-2 hover:bg-white/10 hover:text-on-dark",
-  );
   return (
-    <Tooltip label={label}>
-      {href ? (
-        <Link href={href} aria-label={label} aria-current={active ? "page" : undefined} className={cls}>{inner}</Link>
-      ) : (
-        <button type="button" aria-label={label} onClick={onClick} className={cls}>{inner}</button>
-      )}
+    <Tooltip label={label} className="xl:hidden">
+      {href
+        ? <Link href={href} aria-label={label} aria-current={active ? "page" : undefined} className={cls}>{inner}</Link>
+        : <button type="button" aria-label={label} onClick={onClick} className={cls}>{inner}</button>}
     </Tooltip>
   );
 }
 
-function Rail({ signedIn, pathname }: { signedIn: boolean; pathname: string }) {
+/** Desktop sidebar: brand, search, grouped links, streak and XP, and the account row. */
+function Sidebar({ pathname, user }: { pathname: string; user: User | null }) {
   const theme = useTheme();
+  const learn = NAV.filter((n) => n.rail && n.href !== "/me");
+  const account = ["/me", "/plans"].map((h) => NAV.find((n) => n.href === h)!);
   return (
-    <aside className="sticky top-10 z-30 hidden min-h-[calc(100dvh-80px)] w-14 shrink-0 flex-col items-center rounded-rail bg-linear-to-b from-[var(--rail-from)] to-[var(--rail-to)] py-3 shadow-card lg:flex">
-      <Link href="/" aria-label="English Coach home" className="mb-3 grid size-11 shrink-0 place-items-center rounded-full text-mint">
-        <Mic size={24} strokeWidth={2.4} aria-hidden />
+    <aside className="sticky top-6 z-30 hidden min-h-[calc(100dvh-80px)] w-[72px] shrink-0 flex-col gap-5 rounded-rail border border-line bg-surface p-3 shadow-card lg:flex xl:w-60">
+      <Link href="/" aria-label="English Coach home" className="flex items-center justify-center gap-2.5 xl:justify-start xl:px-1">
+        <Brand />
+        <span className="hidden flex-col leading-tight xl:flex">
+          <span className="text-sm font-semibold tracking-[-0.01em]">English Coach</span>
+          <span className="text-xs text-fg-3">Speak with confidence</span>
+        </span>
       </Link>
-      {signedIn && (
-        <nav aria-label="Main" className="flex w-full flex-1 flex-col items-center gap-1 [@media(max-height:760px)]:gap-0">
-          {NAV.filter((n) => n.rail).map((n) => (
-            <RailButton key={n.href} icon={n.icon} label={n.label} href={n.href} active={isActive(pathname, n.href)} layoutId="rail-active" />
-          ))}
-        </nav>
+
+      <button type="button" onClick={openPalette} aria-label="Search (Ctrl K)"
+        className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-raised/60 text-sm text-fg-3 transition hover:border-fg/20 hover:text-fg-2 xl:justify-start xl:px-3">
+        <Search size={16} aria-hidden />
+        <span className="hidden flex-1 text-left xl:inline">Search</span>
+        <kbd className="hidden rounded-md border border-line bg-surface px-1.5 font-sans text-[0.6875rem] font-semibold xl:inline">Ctrl K</kbd>
+      </button>
+
+      <nav aria-label="Main" className="flex flex-1 flex-col gap-5">
+        {[["Learn", learn], ["Account", account]].map(([title, items]) => (
+          <div key={title as string} className="flex flex-col gap-1">
+            <span className="hidden px-3 pb-1 text-[0.6875rem] font-semibold tracking-wider text-fg-3 uppercase xl:block">{title as string}</span>
+            {(items as typeof NAV).map((n) => <SideLink key={n.href} icon={n.icon} label={n.label} href={n.href} active={isActive(pathname, n.href)} />)}
+          </div>
+        ))}
+      </nav>
+
+      {user && (
+        <div className="flex flex-col gap-2 border-t border-line pt-3">
+          {/* Streak and XP: side by side when labelled, stacked when the sidebar is icons only */}
+          <div className="flex flex-col items-center gap-1.5 xl:flex-row xl:gap-2">
+            <Tooltip label={`${user.streak} day streak`} className="xl:hidden">
+              <span className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold tabular-nums xl:bg-peach/60">
+                <Flame size={14} className="text-coral" aria-hidden />{compact(user.streak)}<span className="sr-only"> day streak</span>
+                <span className="hidden font-medium text-fg-2 xl:inline" aria-hidden>day streak</span>
+              </span>
+            </Tooltip>
+            <Tooltip label={`${user.xp} XP`} className="xl:hidden">
+              <span className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold tabular-nums xl:bg-raised">
+                <Zap size={14} className="text-[#d97706]" aria-hidden />{compact(user.xp)}<span className="sr-only"> XP</span>
+                <span className="hidden font-medium text-fg-2 xl:inline" aria-hidden>XP</span>
+              </span>
+            </Tooltip>
+          </div>
+          <div className="flex flex-col items-center gap-1 xl:flex-row xl:gap-2">
+            <Link href="/me" className="flex min-w-0 items-center gap-2.5 rounded-xl xl:flex-1 xl:p-1.5 xl:hover:bg-hover" aria-label={`${user.name}, your profile`}>
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-mint text-xs font-bold text-on-mint">{user.name[0]?.toUpperCase()}</span>
+              <span className="hidden min-w-0 flex-col leading-tight xl:flex">
+                <span className="truncate text-sm font-semibold">{user.name}</span>
+                <span className="truncate text-xs text-fg-3">{user.plan.name} plan</span>
+              </span>
+            </Link>
+            <div className="flex flex-col gap-1 xl:flex-row">
+              <SideIcon icon={theme === "night" ? Sun : Moon} label={theme === "night" ? "Day mode" : "Night mode"} onClick={toggleTheme} />
+              <SideIcon icon={LogOut} label="Sign out" onClick={() => signOut()} />
+            </div>
+          </div>
+        </div>
       )}
-      <div className="mt-auto flex shrink-0 flex-col items-center gap-1 pt-2">
-        <span aria-hidden className="mb-1 h-px w-7 bg-white/10" />
-        {signedIn && <RailButton icon={Search} label="Search (Ctrl K)" onClick={openPalette} />}
-        <RailButton icon={theme === "night" ? Sun : Moon} label={theme === "night" ? "Day mode" : "Night mode"} onClick={toggleTheme} />
-        {signedIn && <RailButton icon={LogOut} label="Sign out" onClick={() => signOut()} />}
-      </div>
     </aside>
   );
 }
 
+function SideIcon({ icon: I, label, onClick }: { icon: LucideIcon; label: string; onClick: () => void }) {
+  return (
+    <Tooltip label={label}>
+      <button type="button" aria-label={label} onClick={onClick}
+        className="grid size-9 cursor-pointer place-items-center rounded-lg text-fg-2 transition hover:bg-hover hover:text-fg">
+        <I size={17} aria-hidden />
+      </button>
+    </Tooltip>
+  );
+}
+
+/** Phones and tablets: a bar docked to the bottom edge, active tab in green with a small top indicator. */
 function BottomBar({ pathname }: { pathname: string }) {
   const items = NAV.filter((n) => n.bar);
   return (
-    <nav aria-label="Main" className="fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-40 grid h-16 grid-cols-5 rounded-full bg-linear-to-b from-[var(--rail-from)] to-[var(--rail-to)] px-1.5 shadow-pop lg:hidden">
+    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(var(--tabbar-height)+env(safe-area-inset-bottom))] grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
       {items.map((n) => {
         const on = isActive(pathname, n.href);
         return (
-          <Link key={n.href} href={n.href} aria-current={on ? "page" : undefined} className={cn("relative flex flex-col items-center justify-center gap-0.5 rounded-full text-[0.6875rem] font-medium", on ? "text-on-mint" : "text-on-dark-2")}>
-            {on && <motion.span layoutId="bar-active" transition={spring} className="absolute inset-y-1.5 inset-x-0.5 rounded-full bg-mint" />}
-            <n.icon size={20} aria-hidden className="relative" />
-            <span className="relative">{n.label}</span>
+          <Link key={n.href} href={n.href} aria-current={on ? "page" : undefined}
+            className={cn("relative flex flex-col items-center justify-center gap-1 text-[0.6875rem] font-medium transition-colors", on ? "text-accent-fg" : "text-fg-3 hover:text-fg")}>
+            {on && <motion.span layoutId="bar-active" transition={spring} className="absolute top-0 h-0.5 w-8 rounded-full bg-mint-hover" />}
+            <n.icon size={20} strokeWidth={on ? 2.4 : 2} aria-hidden />
+            <span className={cn(on && "font-semibold")}>{n.label}</span>
           </Link>
         );
       })}
-      <button type="button" onClick={openPalette} className="flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-full text-[0.6875rem] font-medium text-on-dark-2">
+      <button type="button" onClick={openPalette} className="flex cursor-pointer flex-col items-center justify-center gap-1 text-[0.6875rem] font-medium text-fg-3 hover:text-fg">
         <Search size={20} aria-hidden />
         More
       </button>

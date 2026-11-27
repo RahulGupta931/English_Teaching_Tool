@@ -1,11 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Icon } from "@/components/Icons";
+import { Check, Delete, LoaderCircle, Share2, Sparkles, Volume2, X } from "lucide-react";
 import { RecordButton } from "@/components/RecordButton";
+import { Page, PageHeader, cn } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { api, errorText, playAudio, postAudio, postJson, useRequireLogin } from "@/lib/api";
 import { useRecorder } from "@/lib/useRecorder";
-import styles from "../ui.module.css";
 
 type Tile = "correct" | "present" | "absent";
 type State = {
@@ -21,6 +26,13 @@ type Bonus = { transcript: string; correct: boolean; feedback: string; xp: numbe
 // Used only in the shared text result, not as UI icons.
 const EMOJI: Record<Tile, string> = { correct: "🟩", present: "🟨", absent: "⬜" };
 const TILE_WORD: Record<Tile, string> = { correct: "right place", present: "wrong place", absent: "not in word" };
+const TILE_BG: Record<Tile, string> = {
+  correct: "bg-[var(--tile-correct)] text-white border-transparent",
+  present: "bg-[var(--tile-present)] text-white border-transparent",
+  absent: "bg-[var(--tile-absent)] text-white border-transparent",
+};
+const KEYS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+const RANK: Record<Tile, number> = { absent: 0, present: 1, correct: 2 };
 
 export default function DailyWord() {
   useRequireLogin();
@@ -35,8 +47,9 @@ export default function DailyWord() {
     api<State>("/v1/daily-word").then(setState).catch((e) => setMessage(errorText(e)));
   }, []);
 
-  async function submitGuess(e: React.FormEvent) {
-    e.preventDefault();
+  async function submitGuess(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (guess.length !== 5 || busy) return;
     setBusy(true);
     setMessage("");
     try {
@@ -75,124 +88,208 @@ export default function DailyWord() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
   }
 
-  if (!state) return <main className={styles.main}><p role="status" className={styles.status}>{message || "Loading…"}</p></main>;
+  if (!state) {
+    return (
+      <Page className="max-w-3xl">
+        {message ? <p role="alert" className="text-sm text-danger-fg">{message}</p> : <p role="status" className="sr-only">Loading…</p>}
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="mx-auto h-96 w-full max-w-sm rounded-card" />
+      </Page>
+    );
+  }
 
   const rows = Array.from({ length: state.max_guesses }, (_, i) => state.guesses[i]);
   const triesLeft = state.max_guesses - state.guesses.length;
+  // Best-known state of each letter, for the on-screen keyboard.
+  const letters: Record<string, Tile> = {};
+  for (const g of state.guesses) [...g.word].forEach((ch, j) => {
+    const t = g.result[j];
+    if (!letters[ch] || RANK[t] > RANK[letters[ch]]) letters[ch] = t;
+  });
+  const type = (ch: string) => setGuess((g) => (g.length < 5 ? g + ch : g));
 
   return (
-    <main className={styles.main}>
-      <div className={styles.pageHead}>
-        <span className={styles.eyebrow}>Daily Word</span>
-        <h1>Guess today&apos;s word</h1>
-        <p className={styles.muted}>Find the five-letter word in {state.max_guesses} tries. Everyone gets the same word today.</p>
-      </div>
+    <Page className="max-w-5xl">
+      <PageHeader
+        title="Guess today's word"
+        subtitle={`Find the five-letter word in ${state.max_guesses} tries. Everyone gets the same word today.`}
+        actions={!state.finished && <Badge variant="secondary" className="h-8 px-3 text-sm">{triesLeft} {triesLeft === 1 ? "try" : "tries"} left</Badge>}
+      />
 
-      <div className={styles.board}>
-        <div className={styles.tiles} role="grid" aria-label="Your guesses">
-          {rows.map((g, i) => {
-            const typing = i === state.guesses.length && !state.finished;
-            return (
-              <div key={i} className={styles.row} role="row">
-                {Array.from({ length: 5 }, (_, j) => {
-                  const letter = g?.word[j] ?? (typing ? guess[j] ?? "" : "");
-                  return (
-                    <div
-                      key={j}
-                      role="gridcell"
-                      className={`${styles.tile} ${g ? styles[g.result[j]] : letter ? styles.filled : ""}`}
-                      aria-label={g ? `${g.word[j]}, ${TILE_WORD[g.result[j]]}` : letter || "empty"}
-                    >
-                      {letter}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-
-        <ul className={styles.legend} aria-label="Colour key">
-          <li><span className={styles.swatch} style={{ background: "var(--tile-correct)" }} />Right place</li>
-          <li><span className={styles.swatch} style={{ background: "var(--tile-present)" }} />Wrong place</li>
-          <li><span className={styles.swatch} style={{ background: "var(--tile-absent)" }} />Not in word</li>
-        </ul>
-
-        {!state.finished && (
-          <form className={styles.guessForm} onSubmit={submitGuess}>
-            <label htmlFor="guess" className={styles.srOnly}>
-              Your guess ({triesLeft} tries left)
-            </label>
-            <input
-              id="guess"
-              className={styles.input}
-              value={guess}
-              onChange={(e) => setGuess(e.target.value.toLowerCase().replace(/[^a-z]/g, "").slice(0, 5))}
-              maxLength={5}
-              autoFocus
-              autoComplete="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              placeholder="Type a word"
-            />
-            <button className={styles.button} disabled={busy || guess.length !== 5}>
-              {busy ? <Icon name="loader" className={styles.spin} /> : "Guess"}
-            </button>
-          </form>
-        )}
-      </div>
-
-      <p role="status" aria-live="polite" className={styles.status}>{recorder.recording ? "Recording… tap stop when you finish." : busy && !state.finished ? "Checking…" : message}</p>
-
-      {state.reveal && (
-        <section className={`${styles.card} ${styles.reveal}`} aria-labelledby="reveal-heading">
-          <span className={`${styles.eyebrow} ${state.solved ? styles.good : ""}`} id="reveal-heading">
-            {state.solved ? `Solved in ${state.guesses.length}!` : "Today's word was"}
-          </span>
-          <p className={styles.revealWord}>{state.reveal.word.toUpperCase()}</p>
-          <div className={styles.phonetic}>
-            {state.reveal.phonetic && <span>{state.reveal.phonetic}</span>}
-            <button className={styles.iconButton} onClick={() => playAudio(state.reveal?.audio, state.reveal?.word)} aria-label="Hear the word">
-              <Icon name="speaker" size={18} />
-            </button>
-          </div>
-          {state.reveal.meaning && <p>{state.reveal.meaning}</p>}
-          {state.reveal.example && <p className={styles.quote} style={{ textAlign: "left", width: "100%" }}>“{state.reveal.example}”</p>}
-          <button className={styles.secondary} onClick={share}><Icon name="share" size={18} />Share on WhatsApp</button>
-        </section>
-      )}
-
-      {state.reveal && (
-        <section className={`${styles.card} ${styles.reveal}`} aria-labelledby="bonus-heading">
-          <span className={`${styles.cardIcon} ${styles.iconOk}`}><Icon name="sparkles" size={22} /></span>
-          <h2 id="bonus-heading">Bonus: use “{state.reveal.word}” in a sentence</h2>
-          {state.bonus_done ? (
-            <p className={`${styles.note} ${styles.good}`}><Icon name="check" size={18} />Bonus earned! Come back tomorrow for a new word.</p>
-          ) : (
-            <>
-              <p className={styles.muted}>Say one sentence out loud that uses today&apos;s word.</p>
-              <RecordButton
-                recording={recorder.recording}
-                busy={busy}
-                maxSeconds={15}
-                onStart={() => { setMessage(""); setBonus(null); recorder.start(); }}
-                onStop={recorder.stop}
-                label="Tap and say your sentence"
-                busyLabel="Checking…"
-              />
-            </>
-          )}
-          {bonus && (
-            <div className={styles.section} style={{ width: "100%" }}>
-              <p className={`${styles.note} ${bonus.correct ? styles.good : styles.bad}`} style={{ justifyContent: "center" }}>
-                <Icon name={bonus.correct ? "check" : "x"} size={18} />
-                {bonus.correct ? `+${bonus.xp} XP! ` : ""}{bonus.feedback}
-              </p>
-              <p className={styles.quote} style={{ textAlign: "left" }}>We heard: “{bonus.transcript}”</p>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,420px)_1fr]">
+        <Card className="items-center">
+          <CardContent className="flex w-full flex-col items-center gap-5">
+            <div role="grid" aria-label="Your guesses" className="grid w-full max-w-[340px] gap-2">
+              {rows.map((g, i) => {
+                const typing = i === state.guesses.length && !state.finished;
+                return (
+                  <div key={i} role="row" className="grid grid-cols-5 gap-2">
+                    {Array.from({ length: 5 }, (_, j) => {
+                      const letter = g?.word[j] ?? (typing ? guess[j] ?? "" : "");
+                      return (
+                        <div
+                          key={j}
+                          role="gridcell"
+                          aria-label={g ? `${g.word[j]}, ${TILE_WORD[g.result[j]]}` : letter || "empty"}
+                          className={cn(
+                            "grid aspect-square place-items-center rounded-xl border-2 text-2xl font-bold uppercase transition-all duration-300",
+                            g ? TILE_BG[g.result[j]] : letter ? "scale-105 border-fg/40 bg-surface" : "border-line bg-raised/60",
+                          )}
+                        >
+                          {letter}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </div>
+
+            <ul aria-label="Colour key" className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-fg-2">
+              <li className="flex items-center gap-1.5"><span className="size-3 rounded bg-[var(--tile-correct)]" />Right place</li>
+              <li className="flex items-center gap-1.5"><span className="size-3 rounded bg-[var(--tile-present)]" />Wrong place</li>
+              <li className="flex items-center gap-1.5"><span className="size-3 rounded bg-[var(--tile-absent)]" />Not in word</li>
+            </ul>
+
+            {!state.finished && (
+              <>
+                <form onSubmit={submitGuess} className="flex w-full max-w-[340px] gap-2">
+                  <label htmlFor="guess" className="sr-only">Your guess ({triesLeft} tries left)</label>
+                  <Input
+                    id="guess"
+                    value={guess}
+                    onChange={(e) => setGuess(e.target.value.toLowerCase().replace(/[^a-z]/g, "").slice(0, 5))}
+                    maxLength={5}
+                    autoFocus
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    placeholder="Type a word"
+                    className="text-center text-lg font-semibold tracking-[0.3em] uppercase placeholder:tracking-normal placeholder:normal-case"
+                  />
+                  <Button type="submit" disabled={busy || guess.length !== 5}>
+                    {busy ? <LoaderCircle className="animate-spin" /> : "Guess"}
+                  </Button>
+                </form>
+
+                {/* On-screen keyboard (touch screens), coloured by what you've learned */}
+                <div className="flex w-full flex-col items-center gap-1.5" aria-hidden="true">
+                  {KEYS.map((row, r) => (
+                    <div key={row} className="flex w-full justify-center gap-1.5">
+                      {r === 2 && <KeyButton wide onClick={() => setGuess((g) => g.slice(0, -1))}><Delete size={18} aria-label="Delete letter" /></KeyButton>}
+                      {[...row].map((ch) => (
+                        <KeyButton key={ch} state={letters[ch]} onClick={() => type(ch)}>{ch}</KeyButton>
+                      ))}
+                      {r === 2 && <KeyButton wide onClick={() => submitGuess()}>Enter</KeyButton>}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <p role="status" aria-live="polite" className="min-h-5 text-center text-sm text-fg-2">
+              {recorder.recording ? "Recording… tap stop when you finish." : busy && !state.finished ? "Checking…" : message}
+            </p>
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-col gap-6">
+          {state.reveal ? (
+            <>
+              <Card className="bg-linear-to-br from-hero to-hero-2 text-on-dark">
+                <CardHeader>
+                  <Badge className={cn("h-7 px-3", state.solved ? "bg-mint text-on-mint" : "bg-white/10 text-on-dark")}>
+                    {state.solved ? `Solved in ${state.guesses.length}!` : "Today's word was"}
+                  </Badge>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <p className="text-4xl font-bold tracking-[0.12em] uppercase">{state.reveal.word}</p>
+                    <Button variant="glass" size="icon" onClick={() => playAudio(state.reveal?.audio, state.reveal?.word)} aria-label="Hear the word">
+                      <Volume2 />
+                    </Button>
+                  </div>
+                  {state.reveal.phonetic && <p className="text-sm text-on-dark-2">{state.reveal.phonetic}</p>}
+                  {state.reveal.meaning && <p className="text-base">{state.reveal.meaning}</p>}
+                  {state.reveal.example && <p className="border-l-2 border-mint/60 pl-3 text-sm italic text-on-dark-2">“{state.reveal.example}”</p>}
+                  <div><Button variant="glass" onClick={share}><Share2 />Share on WhatsApp</Button></div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Sparkles className="size-5 text-coral" aria-hidden />Bonus: use “{state.reveal.word}” in a sentence</CardTitle>
+                  {!state.bonus_done && <CardDescription>Say one sentence out loud that uses today&apos;s word.</CardDescription>}
+                </CardHeader>
+                <CardContent className="flex flex-col items-center gap-4">
+                  {state.bonus_done ? (
+                    <p className="flex w-full items-center gap-2 rounded-tile bg-raised px-4 py-3 text-sm font-medium text-[var(--good)]">
+                      <Check size={18} aria-hidden />Bonus earned! Come back tomorrow for a new word.
+                    </p>
+                  ) : (
+                    <RecordButton
+                      recording={recorder.recording}
+                      busy={busy}
+                      maxSeconds={15}
+                      onStart={() => { setMessage(""); setBonus(null); recorder.start(); }}
+                      onStop={recorder.stop}
+                      label="Tap and say your sentence"
+                      busyLabel="Checking…"
+                    />
+                  )}
+                  {bonus && (
+                    <div className="flex w-full flex-col gap-2">
+                      <p className={cn("flex items-center gap-2 rounded-tile bg-raised px-4 py-3 text-sm font-medium", bonus.correct ? "text-[var(--good)]" : "text-[var(--bad)]")}>
+                        {bonus.correct ? <Check size={18} aria-hidden /> : <X size={18} aria-hidden />}
+                        {bonus.correct ? `+${bonus.xp} XP! ` : ""}{bonus.feedback}
+                      </p>
+                      <p className="text-sm text-fg-2">We heard: “{bonus.transcript}”</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>How to play</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ol className="flex flex-col gap-3 text-sm text-fg-2">
+                  {[
+                    "Type any five-letter word and press Guess.",
+                    "Green means the letter is in the right place; yellow means it's in the word but somewhere else.",
+                    "Grey letters aren't in the word at all. Use the keyboard colours to plan your next guess.",
+                    "After the game, say a sentence with the word for bonus XP.",
+                  ].map((t, i) => (
+                    <li key={i} className="flex gap-3">
+                      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-mint text-xs font-bold text-on-mint">{i + 1}</span>
+                      {t}
+                    </li>
+                  ))}
+                </ol>
+              </CardContent>
+            </Card>
           )}
-        </section>
+        </div>
+      </div>
+    </Page>
+  );
+}
+
+function KeyButton({ state, wide, onClick, children }: { state?: Tile; wide?: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      onClick={onClick}
+      className={cn(
+        "grid h-11 cursor-pointer place-items-center rounded-lg text-sm font-semibold uppercase transition active:scale-95",
+        wide ? "min-w-14 px-2 text-xs" : "min-w-0 flex-1 max-w-9",
+        state ? TILE_BG[state] : "bg-raised text-fg hover:bg-hover",
       )}
-    </main>
+    >
+      {children}
+    </button>
   );
 }

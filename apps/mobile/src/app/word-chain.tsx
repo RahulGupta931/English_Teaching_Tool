@@ -1,13 +1,14 @@
 import { router } from "expo-router";
-import { Check, Volume1, X, Zap } from "lucide-react-native";
+import { Check, Link2, Volume1, X, Zap } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityInfo } from "@/components/ActivityInfo";
 import { MicButton, StopButton } from "@/components/Speaking";
-import { Body, Button, Card, Chip, ErrorText, Header, Label, Muted, Ring, RoundButton, Screen, Title, XpChip } from "@/components/ui";
+import { Body, Button, Card, Chip, ErrorText, Header, IntroCard, Label, Muted, Ring, RoundButton, Screen, Title, XpChip } from "@/components/ui";
 import { errorText, postAudio, postJson } from "@/lib/api";
 import { playAudio, useMic } from "@/lib/audio";
 import { useSession } from "@/lib/session";
-import { C, F } from "@/lib/theme";
+import { C, F, themed } from "@/lib/theme";
 
 type Game = {
   id: number;
@@ -23,7 +24,7 @@ type Game = {
 };
 
 export default function WordChain() {
-  const { refresh } = useSession();
+  const { me, refresh } = useSession();
   const [game, setGame] = useState<Game | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -95,23 +96,17 @@ export default function WordChain() {
 
   if (!game) {
     return (
-      <Screen scroll footer={<Button title="Start game" tone="dark" busy={busy} onPress={start} style={{ flex: 1 }} />}>
+      <Screen scroll footer={<Button title="Start game" tone="mint" busy={busy} onPress={start} style={{ flex: 1 }} />}>
         <Header title="Word Chain" subtitle="Last letter, next word" />
-        <Card style={{ gap: 14 }}>
-          <Title style={{ fontSize: 22 }}>How to play</Title>
-          {[
+        <IntroCard icon={Link2} title="Beat the AI" best={me?.best.word_chain} text="Keep the chain going out loud, one word at a time."
+          steps={[
             "The AI says a word. Say a word that starts with its last letter.",
             "You have 15 seconds for each word. No repeats.",
             "Longer words score more. Reach 10 words to beat the AI.",
             "If we mishear you, you get one retry per game.",
-          ].map((t, i) => (
-            <View key={i} style={{ flexDirection: "row", gap: 12 }}>
-              <View style={s.num}><Text style={s.numText}>{i + 1}</Text></View>
-              <Body style={{ flex: 1 }}>{t}</Body>
-            </View>
-          ))}
-        </Card>
+          ]} />
         <ErrorText>{error}</ErrorText>
+        <ActivityInfo kind="word_chain" tips={["Think of words ending in common letters like E, S or T.", "Longer words score more points.", "Speak clearly: one retry if we mishear you.", "No repeats: every word must be new."]} />
       </Screen>
     );
   }
@@ -124,7 +119,7 @@ export default function WordChain() {
       <Header title="Word Chain" subtitle="Last letter, next word" right={<Chip icon={Zap} text={`${game.score} pts`} />} />
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         {game.words.map((w, i) => (
-          <View key={i} style={[s.word, w.by === "you" && { backgroundColor: C.mint }]}>
+          <View key={i} style={[s.word, w.by === "you" && { backgroundColor: C.mintTile }]}>
             <Text style={[s.wordText, w.by === "you" && { color: C.ink, fontFamily: F.bold }]}>{w.word}</Text>
             {w.by === "you" && <Text style={s.pts}>+{w.points}</Text>}
           </View>
@@ -162,14 +157,14 @@ export default function WordChain() {
               <Title>Your word starts with</Title>
               <View style={s.letter}><Text style={s.letterText}>{game.next_letter?.toUpperCase()}</Text></View>
             </View>
-            <Ring value={clockLeft / game.turn_seconds} size={120} stroke={10} color={C.progress} track={C.grey}>
+            <Ring value={clockLeft / game.turn_seconds} size={102} stroke={10} color={C.progress} track={C.grey}>
               {busy ? <ActivityIndicator color={C.green} /> : <Text style={s.clock}>{clockLeft}</Text>}
             </Ring>
           </Card>
           <ErrorText>{error}</ErrorText>
           <View style={s.bottom}>
             <Button title="End game" tone="white" small onPress={stop} disabled={busy} />
-            {mic.recording ? <StopButton onPress={mic.send} size={112} /> : <MicButton onPress={mic.start} disabled={busy || clockLeft <= 0} />}
+            {mic.recording ? <StopButton onPress={mic.send} size={96} /> : <MicButton onPress={mic.start} disabled={busy || clockLeft <= 0} />}
             <Muted style={{ textAlign: "right", fontSize: 14, width: 90 }}>Words: {yours}{"\n"}Longer = more points</Muted>
           </View>
         </>
@@ -178,18 +173,16 @@ export default function WordChain() {
   );
 }
 
-const s = StyleSheet.create({
-  word: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#fff", borderRadius: 999, paddingHorizontal: 18, paddingVertical: 10 },
+const s = themed(() => StyleSheet.create({
+  word: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.surface, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 10 },
   wordText: { fontFamily: F.semibold, fontSize: 17, color: C.muted },
   pts: { fontFamily: F.bold, fontSize: 13, color: C.ink },
   toast: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.mintSoft, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 14 },
-  stage: { alignItems: "center", gap: 18, paddingVertical: 40, borderRadius: 36 },
-  aiWord: { fontFamily: F.extrabold, fontSize: 56, letterSpacing: -2, color: C.ink },
+  stage: { alignItems: "center", gap: 18, paddingVertical: 40, borderRadius: 22 },
+  aiWord: { fontFamily: F.extrabold, fontSize: 46, letterSpacing: -2, color: C.ink },
   letter: { backgroundColor: C.peach, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 4 },
-  letterText: { fontFamily: F.extrabold, fontSize: 20, color: C.ink },
-  clock: { fontFamily: F.extrabold, fontSize: 40, color: C.ink },
-  final: { fontFamily: F.extrabold, fontSize: 72, color: C.ink, letterSpacing: -2 },
+  letterText: { fontFamily: F.extrabold, fontSize: 16, color: C.onMint },
+  clock: { fontFamily: F.extrabold, fontSize: 33, color: C.ink },
+  final: { fontFamily: F.extrabold, fontSize: 59, color: C.ink, letterSpacing: -2 },
   bottom: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  num: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.ink, alignItems: "center", justifyContent: "center" },
-  numText: { fontFamily: F.bold, color: "#fff", fontSize: 14 },
-});
+}));

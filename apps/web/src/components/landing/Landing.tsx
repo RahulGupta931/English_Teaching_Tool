@@ -155,7 +155,7 @@ function HeroVisual() {
         </motion.div>
 
         <motion.div {...item(1.15)} className="flex items-center gap-3 rounded-2xl bg-black/15 px-4 py-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-coral text-on-mint"><Mic size={16} aria-hidden /></span>
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-coral text-on-coral"><Mic size={16} aria-hidden /></span>
           <span className="flex h-8 flex-1 items-center gap-[3px]">
             {Array.from({ length: 28 }, (_, i) => (
               <span key={i} className="wave-bar w-full rounded-full bg-mint/80" style={{ animationDelay: `${(i % 7) * 90}ms`, height: `${30 + ((i * 37) % 60)}%` }} />
@@ -174,7 +174,7 @@ function HeroVisual() {
         <Trophy size={16} className="text-accent-fg" aria-hidden />
         <span className="text-xs font-semibold">+20 XP</span>
       </motion.div>
-      <motion.div {...item(2.1)} className="float-slow absolute -top-4 -right-2 flex items-center gap-2 rounded-full bg-coral px-4 py-2.5 text-on-mint shadow-pop [animation-delay:1.2s] sm:-right-6">
+      <motion.div {...item(2.1)} className="float-slow absolute -top-4 -right-2 flex items-center gap-2 rounded-full bg-coral px-4 py-2.5 text-on-coral shadow-pop [animation-delay:1.2s] sm:-right-6">
         <Flame size={16} aria-hidden />
         <span className="text-xs font-semibold">5-day streak</span>
       </motion.div>

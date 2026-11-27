@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import styles from "@/app/ui.module.css";
-import { Icon } from "./Icons";
+import { LoaderCircle, Mic, Square } from "lucide-react";
+import { cn } from "@/components/ui";
 
 type Props = {
   recording: boolean;
@@ -35,22 +35,30 @@ export function RecordButton({ recording, busy, disabled, maxSeconds, onStart, o
   const text = recording ? stopLabel : busy ? busyLabel : label;
 
   return (
-    <div className={styles.recorder}>
-      <button
-        type="button"
-        className={`${styles.recordBtn} ${recording ? styles.recordingBtn : ""}`}
-        onClick={recording ? onStop : onStart}
-        disabled={!recording && (busy || disabled)}
-        aria-label={text}
-        aria-pressed={recording}
-      >
-        {busy && !recording ? <Icon name="loader" size={32} className={styles.spin} /> : <Icon name={recording ? "stop" : "mic"} size={32} />}
-      </button>
-      <span className={styles.recordLabel} aria-hidden="true">{text}</span>
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative grid place-items-center">
+        {recording && <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-danger/30" />}
+        <button
+          type="button"
+          onClick={recording ? onStop : onStart}
+          disabled={!recording && (busy || disabled)}
+          aria-label={text}
+          aria-pressed={recording}
+          className={cn(
+            "relative grid size-20 cursor-pointer place-items-center rounded-full shadow-pop transition duration-200 ease-out hover:scale-105 active:scale-95",
+            "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)]/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100",
+            recording ? "bg-danger text-white" : "bg-linear-to-br from-hero to-hero-2 text-mint",
+          )}
+        >
+          {busy && !recording ? <LoaderCircle size={30} className="animate-spin" aria-hidden />
+            : recording ? <Square size={26} fill="currentColor" aria-hidden /> : <Mic size={30} aria-hidden />}
+        </button>
+      </div>
+      <span className="text-sm font-medium text-fg-2" aria-hidden="true">{text}</span>
       {recording && (
-        <span className={styles.recordTime}>
+        <span className="text-sm font-semibold tabular-nums text-fg" aria-live="off">
           {clock(elapsed)}
-          {maxSeconds ? <span className={styles.muted}> / {clock(maxSeconds)}</span> : null}
+          {maxSeconds ? <span className="font-normal text-fg-3"> / {clock(maxSeconds)}</span> : null}
         </span>
       )}
     </div>

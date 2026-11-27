@@ -3,7 +3,7 @@ import { Tabs, type BottomTabBarProps } from "expo-router/js-tabs";
 import { House, LayoutGrid, Mic, Trophy, User, type LucideIcon } from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { C, F } from "@/lib/theme";
+import { C, F, themed } from "@/lib/theme";
 
 const TABS: Record<string, { label: string; icon: LucideIcon }> = {
   index: { label: "Home", icon: House },
@@ -23,7 +23,7 @@ export default function TabsLayout() {
   );
 }
 
-/** Floating pill with a raised mic button in the middle (Figma page 1). The mic starts a role-play. */
+/** Docked bar, same style as the web app's phone bar: active tab in green with a top indicator; the mic in the middle starts a role-play. */
 function TabBar({ state, navigateToTab }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const item = (i: number) => {
@@ -33,42 +33,40 @@ function TabBar({ state, navigateToTab }: BottomTabBarProps) {
     return (
       <Pressable key={route.key} accessibilityRole="tab" accessibilityState={{ selected: active }} accessibilityLabel={label}
         onPress={() => navigateToTab(route.key)} style={s.item}>
-        <View style={[s.iconWrap, active && { backgroundColor: C.mint }]}>
-          <I size={24} color={active ? C.ink : C.muted} strokeWidth={2} />
-        </View>
+        {active && <View style={s.indicator} />}
+        <I size={22} color={active ? C.progress : C.muted} strokeWidth={active ? 2.4 : 2} />
         <Text style={[s.label, active && { color: C.ink, fontFamily: F.bold }]}>{label}</Text>
       </Pressable>
     );
   };
   return (
-    <View style={[s.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
-      <View style={s.bar}>
-        {item(0)}
-        {item(1)}
-        <View style={{ width: 84 }} />
-        {item(2)}
-        {item(3)}
+    <View style={[s.bar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      {item(0)}
+      {item(1)}
+      <View style={s.item}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Start speaking with the AI partner" onPress={() => router.push("/roleplay")}
+          style={({ pressed }) => [s.mic, pressed && { transform: [{ scale: 0.95 }] }]}>
+          <Mic size={24} color={C.mint} strokeWidth={2.2} />
+        </Pressable>
+        <Text style={s.label}>Speak</Text>
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel="Start speaking with the AI partner"
-        onPress={() => router.push("/roleplay")} style={[s.mic, { bottom: Math.max(insets.bottom, 12) + 38 }]}>
-        <Mic size={30} color={C.mint} strokeWidth={2} />
-      </Pressable>
+      {item(2)}
+      {item(3)}
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  wrap: { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 16, alignItems: "center" },
+const s = themed(() => StyleSheet.create({
   bar: {
-    flexDirection: "row", backgroundColor: "#fff", borderRadius: 999, paddingVertical: 10, paddingHorizontal: 8, width: "100%",
-    shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 8,
+    position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", alignItems: "flex-end",
+    backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 8,
+    shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: -2 }, elevation: 12,
   },
-  item: { flex: 1, alignItems: "center", gap: 4 },
-  iconWrap: { width: 58, height: 34, borderRadius: 999, alignItems: "center", justifyContent: "center" },
-  label: { fontFamily: F.semibold, fontSize: 13, color: C.muted },
+  item: { flex: 1, alignItems: "center", justifyContent: "flex-end", gap: 3, minHeight: 48 },
+  indicator: { position: "absolute", top: -8, width: 28, height: 3, borderRadius: 2, backgroundColor: C.progress },
+  label: { fontFamily: F.medium, fontSize: 11, color: C.muted },
   mic: {
-    position: "absolute", width: 84, height: 84, borderRadius: 42, backgroundColor: C.green, borderWidth: 5, borderColor: "#EEF2EF",
-    alignItems: "center", justifyContent: "center", elevation: 10,
-    shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+    width: 54, height: 54, borderRadius: 27, backgroundColor: C.green, alignItems: "center", justifyContent: "center", marginTop: -26,
+    shadowColor: C.green, shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 8,
   },
-});
+}));

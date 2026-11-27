@@ -7,7 +7,7 @@ import { Body, Card, Chip, ErrorText, Header, Loading, Muted, Screen, Title, XpC
 import { api, errorText, postAudio, postJson } from "@/lib/api";
 import { playAudio, useMic } from "@/lib/audio";
 import { useSession } from "@/lib/session";
-import { C, F } from "@/lib/theme";
+import { C, F, themed } from "@/lib/theme";
 
 type Mark = "correct" | "present" | "absent";
 type State = {
@@ -20,7 +20,7 @@ type State = {
 };
 type Sentence = { transcript: string; correct: boolean; feedback: string; xp: number };
 
-const TILE: Record<Mark, string> = { correct: C.mint, present: C.peach, absent: C.absent };
+const TILE: Record<Mark, string> = themed(() => ({ correct: C.mint, present: C.peach, absent: C.absent }));
 const EMOJI: Record<Mark, string> = { correct: "🟩", present: "🟨", absent: "⬜" };
 const RANK: Record<Mark, number> = { absent: 1, present: 2, correct: 3 };
 const KEYS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
@@ -97,6 +97,13 @@ export default function DailyWord() {
   return (
     <Screen scroll>
       <Header title="Daily Word" subtitle="Same word for everyone today" right={<Chip text={state.finished ? (state.solved ? "Solved!" : "Finished") : `${left} tr${left === 1 ? "y" : "ies"} left`} />} />
+      {/* Same intro as the web page */}
+      {!state.finished && (
+        <View style={{ gap: 4 }}>
+          <Text style={s.title}>Guess today&apos;s word</Text>
+          <Muted style={{ fontSize: 13 }}>Find the five-letter word in {state.max_guesses} tries. Everyone gets the same word today.</Muted>
+        </View>
+      )}
       <View style={{ gap: 10, paddingHorizontal: 8 }}>
         {rows.map((row, r) => (
           <View key={r} style={{ flexDirection: "row", gap: 10 }}>
@@ -105,7 +112,7 @@ export default function DailyWord() {
               const mark = row.result?.[i];
               return (
                 <View key={i} style={[s.tile, mark ? { backgroundColor: TILE[mark], borderColor: TILE[mark] } : ch ? { borderColor: C.ink, borderWidth: 2 } : null]}>
-                  <Text style={s.tileText}>{ch?.toUpperCase()}</Text>
+                  <Text style={[s.tileText, onBright(mark) && { color: C.onMint }]}>{ch?.toUpperCase()}</Text>
                 </View>
               );
             })}
@@ -126,7 +133,7 @@ export default function DailyWord() {
         <>
           <Card style={{ gap: 8 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <Title style={{ fontSize: 28, flex: 1 }}>{state.reveal.word.toUpperCase()}</Title>
+              <Title style={{ fontSize: 23, flex: 1 }}>{state.reveal.word.toUpperCase()}</Title>
               <Chip text="Listen" icon={Volume1} tone="grey" onPress={() => playAudio(state.reveal!.audio, state.reveal!.word)} />
             </View>
             {!!state.reveal.phonetic && <Muted>{state.reveal.phonetic}</Muted>}
@@ -164,24 +171,47 @@ export default function DailyWord() {
           ))}
         </View>
       )}
+
+      {!state.finished && (
+        <Card style={{ gap: 10 }}>
+          <Title style={{ fontSize: 16 }}>How to play</Title>
+          {[
+            "Type any five-letter word and press Enter.",
+            "Green means the letter is in the right place; purple means it's in the word but somewhere else.",
+            "Grey letters aren't in the word. Use the keyboard colours to plan your next guess.",
+            "After the game, say a sentence with the word for bonus XP.",
+          ].map((t, i) => (
+            <View key={i} style={{ flexDirection: "row", gap: 10 }}>
+              <View style={s.step}><Text style={s.stepText}>{i + 1}</Text></View>
+              <Muted style={{ flex: 1, fontSize: 13 }}>{t}</Muted>
+            </View>
+          ))}
+        </Card>
+      )}
     </Screen>
   );
 }
 
+// Mint and peach stay bright in Night, so their letters stay dark.
+const onBright = (m?: Mark) => m === "correct" || m === "present";
+
 function Key({ label, onPress, mark, wide, dark, busy }: { label: string; onPress: () => void; mark?: Mark; wide?: boolean; dark?: boolean; busy?: boolean }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label === "back" ? "Delete letter" : label} onPress={onPress}
-      style={({ pressed }) => [s.key, wide && { flex: 1.6 }, { backgroundColor: dark ? C.ink : mark ? TILE[mark] : "#fff" }, pressed && { opacity: 0.7 }]}>
-      {busy ? <ActivityIndicator color="#fff" /> : label === "back" ? <Delete size={22} color={C.ink} /> :
-        <Text style={[s.keyText, dark && { color: "#fff", fontSize: 16 }]}>{label}</Text>}
+      style={({ pressed }) => [s.key, wide && { flex: 1.6 }, { backgroundColor: dark ? C.ink : mark ? TILE[mark] : C.surface }, pressed && { opacity: 0.7 }]}>
+      {busy ? <ActivityIndicator color={C.onInk} /> : label === "back" ? <Delete size={22} color={C.ink} /> :
+        <Text style={[s.keyText, onBright(mark) && { color: C.onMint }, dark && { color: C.onInk, fontSize: 16 }]}>{label}</Text>}
     </Pressable>
   );
 }
 
-const s = StyleSheet.create({
-  tile: { flex: 1, aspectRatio: 1, borderRadius: 18, borderWidth: 2, borderColor: "#DDE5E0", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
-  tileText: { fontFamily: F.extrabold, fontSize: 30, color: C.ink },
+const s = themed(() => StyleSheet.create({
+  title: { fontFamily: F.extrabold, fontSize: 24, letterSpacing: -0.5, color: C.ink },
+  step: { width: 22, height: 22, borderRadius: 11, backgroundColor: C.mint, alignItems: "center", justifyContent: "center" },
+  stepText: { fontFamily: F.bold, fontSize: 12, color: C.onMint },
+  tile: { flex: 1, aspectRatio: 1, borderRadius: 18, borderWidth: 2, borderColor: C.grey, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
+  tileText: { fontFamily: F.extrabold, fontSize: 25, color: C.ink },
   legend: { flexDirection: "row", justifyContent: "center", gap: 16, flexWrap: "wrap" },
   key: { flex: 1, height: 54, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  keyText: { fontFamily: F.semibold, fontSize: 18, color: C.ink },
-});
+  keyText: { fontFamily: F.semibold, fontSize: 15, color: C.ink },
+}));
