@@ -3,7 +3,7 @@ import { Platform } from "react-native";
 import { supabase } from "./supabase";
 
 // Same FastAPI backend as the web app. On a phone, localhost is the phone itself: use your PC's LAN IP or the deployed URL.
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000";
+export const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/+$/, ""); // no trailing slash: "//v1/..." gets redirected
 
 export class ApiError extends Error {
   constructor(message: string, readonly status: number) {

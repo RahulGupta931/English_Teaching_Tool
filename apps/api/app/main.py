@@ -18,7 +18,9 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="English Learning API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.environ.get("WEB_ORIGIN", "http://localhost:3000").split(","),  # comma-separated: web app + Expo web
+    # comma-separated deployed web origins; spaces and trailing slashes would never match the browser's Origin header
+    allow_origins=[o.strip().rstrip("/") for o in os.environ.get("WEB_ORIGIN", "http://localhost:3000").split(",") if o.strip()],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",  # any local dev server (web :3000, Expo web :8081)
     allow_methods=["*"],
     allow_headers=["*"],
 )

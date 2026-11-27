@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 import { supabase } from "./supabase";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// A trailing slash would make "//v1/..." paths, which Vercel redirects and browsers then block.
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/+$/, "");
 
 // The signed-in user's Supabase access token, kept fresh by Supabase (it refreshes tokens on its own).
 // undefined until the stored session has been read, null when signed out.
