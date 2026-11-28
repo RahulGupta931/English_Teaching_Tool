@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Flame, LogOut, Mic, Moon, Search, Sun, Zap, type LucideIcon } from "lucide-react";
+import { Flame, LogOut, Mic, Moon, Search, Settings, Sun, Zap, type LucideIcon } from "lucide-react";
 import { getMe, signOut, useToken, type User } from "@/lib/api";
 import { toggleTheme, useTheme } from "@/lib/theme";
 import { cn, Pill, Tooltip } from "@/components/ui";
@@ -16,7 +16,7 @@ const compact = (n: number) => new Intl.NumberFormat("en", { notation: "compact"
 const isActive = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 const spring = { type: "spring", stiffness: 500, damping: 40 } as const;
 
-/** Desktop sidebar (1024px and up), phone header and docked bottom bar, and the XP/streak pills. */
+/** Desktop sidebar (1024px and up), phone header (Settings gear top right) and docked bottom bar, and the XP/streak pills. */
 export function Nav() {
   const token = useToken();
   const pathname = usePathname();
@@ -51,6 +51,9 @@ export function Nav() {
         <div className="ml-auto flex items-center gap-2">
           {shownUser && <Stats user={shownUser} />}
           <ThemeButton className="size-9 text-fg-2 hover:bg-hover hover:text-fg" />
+          <Link href="/settings" aria-label="Settings" className="grid size-9 place-items-center rounded-full text-fg-2 transition hover:bg-hover hover:text-fg active:scale-[0.97]">
+            <Settings size={18} aria-hidden />
+          </Link>
         </div>
       </header>
 
@@ -155,7 +158,7 @@ function SideLink({ icon: I, label, href, active, onClick }: { icon: LucideIcon;
 function Sidebar({ pathname, user }: { pathname: string; user: User | null }) {
   const theme = useTheme();
   const learn = NAV.filter((n) => n.rail && n.href !== "/me");
-  const account = ["/me", "/plans"].map((h) => NAV.find((n) => n.href === h)!);
+  const account = ["/me", "/plans", "/settings"].map((h) => NAV.find((n) => n.href === h)!);
   return (
     <aside className="sticky top-6 z-30 hidden min-h-[calc(100dvh-80px)] w-[72px] shrink-0 flex-col gap-5 rounded-rail border border-line bg-surface p-3 shadow-card lg:flex xl:w-60">
       <Link href="/" aria-label="English Coach home" className="flex items-center justify-center gap-2.5 xl:justify-start xl:px-1">

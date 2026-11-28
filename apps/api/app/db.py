@@ -149,7 +149,7 @@ def _ints(params) -> tuple:
 def connect():
     """One transaction: committed when the block ends, rolled back if it raises."""
     # prepare_threshold=None: Supabase's transaction pooler (port 6543) can't keep prepared statements.
-    with psycopg.connect(os.environ["DATABASE_URL"], row_factory=dict_row, prepare_threshold=None) as con:
+    with psycopg.connect(os.environ["DATABASE_URL"], row_factory=dict_row, prepare_threshold=None, connect_timeout=10) as con:
         yield Connection(con)
 
 

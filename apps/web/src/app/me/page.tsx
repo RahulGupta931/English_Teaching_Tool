@@ -3,18 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookX, BriefcaseBusiness, Calendar, Flame, Globe, GraduationCap, History, LogOut, Mail, Mic, Sparkles, Trash2, Trophy, Zap, type LucideIcon } from "lucide-react";
+import { BookX, BriefcaseBusiness, Calendar, Flame, History, Mail, Mic, Trash2, Trophy, Zap, type LucideIcon } from "lucide-react";
 import { kind } from "@/components/Activities";
-import { MistakeList } from "@/components/Results";
-import { Avatar, ButtonLink, EmptyState, IconTile, ListRow, Page, Pill, Segmented, Skeleton, cn } from "@/components/ui";
+import { Avatar, ButtonLink, EmptyState, IconTile, ListRow, Page, Pill, Skeleton, cn } from "@/components/ui";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { api, ApiError, errorText, getMe, signOut, useRequireLogin, type Mistake, type User } from "@/lib/api";
-import { setTheme, useTheme } from "@/lib/theme";
 
 type Me = {
   user: User;
@@ -28,11 +25,10 @@ const LEVEL: Record<string, string> = { beginner: "Beginner", intermediate: "Int
 const day = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { dateStyle: "medium" });
 const when = (utc: string) => new Date(utc.replace(" ", "T") + "Z");
 
-/** Profile hub: stats, your scores and history on the left; plan, settings and account on the right. */
+/** Profile hub: stats, your scores and history on the left; plan and account on the right. Settings has its own page. */
 export default function MePage() {
   useRequireLogin();
   const router = useRouter();
-  const theme = useTheme();
   const [me, setMe] = useState<Me | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -44,15 +40,6 @@ export default function MePage() {
       // 428: profile not filled in yet; Home shows the profile form.
       .catch((e) => (e instanceof ApiError && e.status === 428 ? router.replace("/") : setMessage(errorText(e))));
   }, [router]);
-
-  async function changeLanguage(explain_lang: string) {
-    try {
-      const user = await api<User>("/v1/me", { method: "PATCH", body: JSON.stringify({ explain_lang }) });
-      setMe((m) => (m ? { ...m, user } : m));
-    } catch (e) {
-      setMessage(errorText(e));
-    }
-  }
 
   async function deleteAccount() {
     try {
@@ -93,7 +80,6 @@ export default function MePage() {
               {(user.email ?? user.phone) && <span className="flex items-center gap-1.5"><Mail size={14} aria-hidden />{user.email ?? user.phone}</span>}
             </div>
           </div>
-          <Button variant="secondary" onClick={() => signOut()}><LogOut />Sign out</Button>
         </CardContent>
       </Card>
 
@@ -167,23 +153,9 @@ export default function MePage() {
             </CardContent>
           </Card>
 
-          {mistakeCount > 0 && (
-            <Card aria-labelledby="mistakes-heading">
-              <CardHeader>
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle id="mistakes-heading" className="flex items-center gap-2"><BookX className="size-5 text-accent-fg" aria-hidden />Mistakes to review</CardTitle>
-                  <Link href="/mistakes" className="text-sm font-semibold text-link hover:underline">See all {mistakeCount}</Link>
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-4">
-                <MistakeList mistakes={me.mistakes.slice(0, 2)} />
-                <ButtonLink href="/coach" variant="ghost" icon={GraduationCap} className="self-start">Fix them with Mistake Coach</ButtonLink>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
-        {/* Right: plan, settings, account */}
+        {/* Right: plan, account */}
         <div className="flex flex-col gap-5 lg:sticky lg:top-6 lg:col-span-5 lg:gap-6">
           <Card aria-labelledby="plan-heading" className="bg-linear-to-br from-hero to-hero-2 text-on-dark">
             <CardHeader>
@@ -199,22 +171,6 @@ export default function MePage() {
                 <PlanFact icon={Calendar} label="Ends" value={plan.expires ? day(plan.expires).replace(/,? \d{4}$/, "") : "Never"} />
               </dl>
               {plan.upcoming && <p className="text-xs text-on-dark-2">{plan.upcoming} is lined up next.</p>}
-              <ButtonLink href="/plans" variant="coral" icon={Sparkles} className="self-start">Upgrade your practice</ButtonLink>
-            </CardContent>
-          </Card>
-
-          <Card aria-labelledby="settings-heading">
-            <CardHeader><CardTitle id="settings-heading">Settings</CardTitle></CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <Setting icon={Globe} title="Explanations in" meta="Language for tips and corrections">
-                <Segmented label="Explanations in" value={user.explain_lang} onChange={changeLanguage}
-                  options={[{ value: "english", label: "English" }, { value: "hinglish", label: "Hinglish" }]} />
-              </Setting>
-              <Separator />
-              <Setting icon={Sparkles} title="Appearance" meta="Day or night colours">
-                <Segmented label="Appearance" value={theme} onChange={setTheme}
-                  options={[{ value: "day", label: "Day" }, { value: "night", label: "Night" }]} />
-              </Setting>
             </CardContent>
           </Card>
 
@@ -224,7 +180,6 @@ export default function MePage() {
               <CardDescription>Deleting your account removes your XP, scores and saved mistakes for good.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
-              <Button variant="secondary" onClick={() => signOut()}><LogOut />Sign out</Button>
               <Button variant="destructive" onClick={() => setConfirmDelete(true)}><Trash2 />Delete account</Button>
             </CardContent>
           </Card>
@@ -271,21 +226,6 @@ function PlanFact({ icon: I, label, value }: { icon: LucideIcon; label: string; 
       <I size={16} className="text-mint" aria-hidden />
       <dt className="order-last text-[0.6875rem] text-on-dark-2">{label}</dt>
       <dd className="text-lg font-semibold tabular-nums">{value}</dd>
-    </div>
-  );
-}
-
-function Setting({ icon, title, meta, children }: { icon: LucideIcon; title: string; meta: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-3">
-        <IconTile icon={icon} size={36} />
-        <div className="flex flex-col">
-          <span className="text-sm font-medium">{title}</span>
-          <span className="text-xs text-fg-3">{meta}</span>
-        </div>
-      </div>
-      <div className="pl-12">{children}</div>
     </div>
   );
 }

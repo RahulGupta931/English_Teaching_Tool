@@ -58,6 +58,7 @@ function Gate({ fonts, theme }: { fonts: boolean; theme: string }) {
         <Stack.Screen name="quiz" />
         <Stack.Screen name="placement" />
         <Stack.Screen name="mistakes" />
+        <Stack.Screen name="settings" />
       </Stack.Protected>
       <Stack.Screen name="auth-callback" />
     </Stack>

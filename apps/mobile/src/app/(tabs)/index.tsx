@@ -1,9 +1,9 @@
 import { useFocusEffect, router, type Href } from "expo-router";
-import { Check, ChevronRight, Flame, GraduationCap, History, LayoutGrid, MessagesSquare, Sparkles, Target, Timer, Trophy, Zap, type LucideIcon } from "lucide-react-native";
+import { Check, ChevronRight, Flame, GraduationCap, History, LayoutGrid, MessagesSquare, Settings, Sparkles, Target, Timer, Trophy, Zap, type LucideIcon } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ACTIVITIES, ActivityCard, kindIcon } from "@/components/Activities";
-import { Button, Card, Chip, Em, GreenCard, H1, H2, IconTile, Label, MistakeCard, Muted, Screen } from "@/components/ui";
+import { Button, Card, Chip, Em, GreenCard, H1, H2, IconTile, Label, MistakeCard, Muted, RoundButton, Screen } from "@/components/ui";
 import { ago, doneToday as doneTodayOf, KINDS, localDay, when } from "@/lib/activity";
 import type { Me } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -41,10 +41,38 @@ export default function Home() {
 
   return (
     <Screen scroll style={{ paddingBottom: 120, gap: 20 }} onRefresh={refresh}>
-      <View style={{ marginTop: 8 }}>
-        <Label>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</Label>
-        <H1 style={{ fontSize: 30 }}>Hi {user.name.split(" ")[0]}!</H1>
+      <View style={[s.between, { marginTop: 8 }]}>
+        <View>
+          <Label>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</Label>
+          <H1 style={{ fontSize: 30 }}>Hi {user.name.split(" ")[0]}!</H1>
+        </View>
+        <RoundButton icon={Settings} label="Settings" onPress={() => router.push("/settings")} />
       </View>
+
+      {/* Your progress: streak, week, XP, level, speaking time */}
+      <Card style={{ gap: 14 }}>
+        <Text style={s.cardTitle}>Your progress</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <View style={s.flame}><Flame size={20} color={C.purple} strokeWidth={2.4} /></View>
+          <View>
+            <Text style={s.big}>{user.streak} {user.streak === 1 ? "day" : "days"}</Text>
+            <Muted style={{ fontSize: 12 }}>{user.streak ? "Current streak" : "Practise today to start a streak"}</Muted>
+          </View>
+        </View>
+        <WeekDots activities={me.activities} />
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <MiniStat icon={Zap} label="Total XP" value={user.xp.toLocaleString("en-IN")} />
+          <MiniStat icon={Target} label="Level" value={user.level ? user.level[0].toUpperCase() + user.level.slice(1) : "Find out"}
+            onPress={user.level ? undefined : () => router.push("/placement")} />
+        </View>
+        <View style={{ gap: 6 }}>
+          <View style={s.between}>
+            <Text style={s.rowLabel}>Speaking left today</Text>
+            <Muted style={{ fontSize: 13 }}>{minutesLeft} of {limit} min</Muted>
+          </View>
+          <Bar pct={leftPct} />
+        </View>
+      </Card>
 
       {/* Today: today's plan and one button for the next thing to do */}
       <GreenCard style={{ gap: 14 }}>
@@ -75,31 +103,6 @@ export default function Home() {
             style={{ alignSelf: "flex-start" }} onPress={() => router.push(next ? next.href : "/practice")} />
           : <Button title="Find your level" icon={Target} tone="peach" small style={{ alignSelf: "flex-start" }} onPress={() => router.push("/placement")} />}
       </GreenCard>
-
-      {/* Your progress: streak, week, XP, level, speaking time */}
-      <Card style={{ gap: 14 }}>
-        <Text style={s.cardTitle}>Your progress</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <View style={s.flame}><Flame size={20} color={C.purple} strokeWidth={2.4} /></View>
-          <View>
-            <Text style={s.big}>{user.streak} {user.streak === 1 ? "day" : "days"}</Text>
-            <Muted style={{ fontSize: 12 }}>{user.streak ? "Current streak" : "Practise today to start a streak"}</Muted>
-          </View>
-        </View>
-        <WeekDots activities={me.activities} />
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          <MiniStat icon={Zap} label="Total XP" value={user.xp.toLocaleString("en-IN")} />
-          <MiniStat icon={Target} label="Level" value={user.level ? user.level[0].toUpperCase() + user.level.slice(1) : "Find out"}
-            onPress={user.level ? undefined : () => router.push("/placement")} />
-        </View>
-        <View style={{ gap: 6 }}>
-          <View style={s.between}>
-            <Text style={s.rowLabel}>Speaking left today</Text>
-            <Muted style={{ fontSize: 13 }}>{minutesLeft} of {limit} min</Muted>
-          </View>
-          <Bar pct={leftPct} />
-        </View>
-      </Card>
 
       <View style={{ gap: 12 }}>
         <View style={s.between}>

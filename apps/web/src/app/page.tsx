@@ -92,6 +92,38 @@ function Dashboard() {
       </header>
 
       <div className="stagger grid gap-5 lg:grid-cols-12 lg:gap-6">
+        {/* Your progress: streak and week, XP, level and speaking time in one card */}
+        <Card aria-labelledby="progress-heading" className="gap-5 lg:col-span-4">
+          <CardTitle id="progress-heading">Your progress</CardTitle>
+          <div className="flex items-center gap-3">
+            <span className="grid size-11 place-items-center rounded-full bg-peach text-on-mint"><Flame size={22} aria-hidden /></span>
+            <div>
+              <p className="text-2xl font-semibold tracking-[-0.02em] tabular-nums">{user.streak} {user.streak === 1 ? "day" : "days"}</p>
+              <p className="text-xs text-fg-2">{user.streak ? "Current streak" : "Practise today to start a streak"}</p>
+            </div>
+          </div>
+          <WeekDots activities={me.activities} />
+          <dl className="grid grid-cols-2 gap-3">
+            <div className="rounded-tile bg-raised p-3">
+              <dt className="flex items-center gap-1.5 text-xs text-fg-2"><Zap size={14} aria-hidden />Total XP</dt>
+              <dd className="text-xl font-semibold tabular-nums">{user.xp.toLocaleString()}</dd>
+            </div>
+            <div className="rounded-tile bg-raised p-3">
+              <dt className="flex items-center gap-1.5 text-xs text-fg-2"><Target size={14} aria-hidden />Level</dt>
+              <dd className="text-xl font-semibold capitalize">
+                {user.level ?? <Link href="/placement" className="text-base text-link hover:underline">Find out</Link>}
+              </dd>
+            </div>
+          </dl>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-baseline justify-between text-sm">
+              <span className="font-medium">Speaking left today</span>
+              <span className="text-fg-2 tabular-nums">{minutesLeft} of {limitMinutes} min</span>
+            </div>
+            <Progress value={leftPct} aria-label="Speaking time left today" />
+          </div>
+        </Card>
+
         {/* Today: the hero and today's plan in one card, with one button for the next thing to do */}
         <Card variant="hero" aria-labelledby="today-heading" className="gap-5 overflow-hidden lg:col-span-8">
           <div aria-hidden className="pointer-events-none absolute -top-24 -right-16 size-72 rounded-full bg-mint/10 blur-3xl" />
@@ -132,38 +164,6 @@ function Dashboard() {
               );
             })}
           </ol>
-        </Card>
-
-        {/* Your progress: streak and week, XP, level and speaking time in one card */}
-        <Card aria-labelledby="progress-heading" className="gap-5 lg:col-span-4">
-          <CardTitle id="progress-heading">Your progress</CardTitle>
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-full bg-peach text-on-mint"><Flame size={22} aria-hidden /></span>
-            <div>
-              <p className="text-2xl font-semibold tracking-[-0.02em] tabular-nums">{user.streak} {user.streak === 1 ? "day" : "days"}</p>
-              <p className="text-xs text-fg-2">{user.streak ? "Current streak" : "Practise today to start a streak"}</p>
-            </div>
-          </div>
-          <WeekDots activities={me.activities} />
-          <dl className="grid grid-cols-2 gap-3">
-            <div className="rounded-tile bg-raised p-3">
-              <dt className="flex items-center gap-1.5 text-xs text-fg-2"><Zap size={14} aria-hidden />Total XP</dt>
-              <dd className="text-xl font-semibold tabular-nums">{user.xp.toLocaleString()}</dd>
-            </div>
-            <div className="rounded-tile bg-raised p-3">
-              <dt className="flex items-center gap-1.5 text-xs text-fg-2"><Target size={14} aria-hidden />Level</dt>
-              <dd className="text-xl font-semibold capitalize">
-                {user.level ?? <Link href="/placement" className="text-base text-link hover:underline">Find out</Link>}
-              </dd>
-            </div>
-          </dl>
-          <div className="flex flex-col gap-2">
-            <div className="flex items-baseline justify-between text-sm">
-              <span className="font-medium">Speaking left today</span>
-              <span className="text-fg-2 tabular-nums">{minutesLeft} of {limitMinutes} min</span>
-            </div>
-            <Progress value={leftPct} aria-label="Speaking time left today" />
-          </div>
         </Card>
       </div>
 

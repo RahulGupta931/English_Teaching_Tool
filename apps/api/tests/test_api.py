@@ -323,6 +323,11 @@ def test_admin_requires_password(client, monkeypatch):
     assert client.post("/v1/admin/login", json={"password": "wrong"}).status_code == 403
     assert client.get("/v1/admin/users").status_code == 403
     assert client.get("/v1/admin/users", headers={"X-Admin-Token": "made-up"}).status_code == 403
+    token = admin_headers(client, monkeypatch)["X-Admin-Token"]
+    expires, sig = token.split(".")
+    assert client.get("/v1/admin/users", headers={"X-Admin-Token": f"{int(expires) + 1}.{sig}"}).status_code == 403  # tampered
+    monkeypatch.setenv("ADMIN_PASSWORD", "changed")
+    assert client.get("/v1/admin/users", headers={"X-Admin-Token": token}).status_code == 403  # password rotated
 
 
 def test_admin_plans_and_switching_users(client, login, monkeypatch):

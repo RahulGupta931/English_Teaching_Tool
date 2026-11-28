@@ -3,6 +3,8 @@
 Separate from learner login (which is name-only): admins sign in with ADMIN_PASSWORD.
 """
 
+import hashlib
+import hmac
 import os
 import secrets
 import time
@@ -18,16 +20,20 @@ router = APIRouter(prefix="/v1/admin")
 
 SESSION_SECONDS = 12 * 3600
 LOGIN_ATTEMPTS_PER_MINUTE = 5
-# shortcut: in-memory, single API process only (same as the rate limiter); a restart signs admins out.
-_sessions: dict[str, float] = {}
+# shortcut: in-memory, so on serverless each instance counts its own attempts; move to the DB if brute force matters.
 _attempts: deque = deque()
+
+
+def _sign(expires: str) -> str:
+    # Signed, not stored: serverless instances share no memory. Changing ADMIN_PASSWORD signs every admin out.
+    return hmac.new(os.environ.get("ADMIN_PASSWORD", "").encode(), expires.encode(), hashlib.sha256).hexdigest()
 
 
 def require_admin(x_admin_token: str = Header("")) -> None:
     # 403, not 401: the web app treats 401 as "learner logged out".
-    expires = _sessions.get(x_admin_token)
-    if not expires or expires < time.monotonic():
-        _sessions.pop(x_admin_token, None)
+    expires, _, sig = x_admin_token.partition(".")
+    if not (os.environ.get("ADMIN_PASSWORD") and expires.isdigit() and int(expires) > time.time()
+            and hmac.compare_digest(sig, _sign(expires))):
         raise HTTPException(403, "Admin sign-in required.")
 
 
@@ -65,9 +71,8 @@ def login(body: AdminLogin):
     _attempts.append(now)
     if not secrets.compare_digest(body.password.encode(), password.encode()):
         raise HTTPException(403, "Wrong password.")
-    token = secrets.token_urlsafe(32)
-    _sessions[token] = now + SESSION_SECONDS
-    return {"token": token}
+    expires = str(int(time.time()) + SESSION_SECONDS)
+    return {"token": f"{expires}.{_sign(expires)}"}
 
 
 @router.get("/users", dependencies=[Depends(require_admin)])

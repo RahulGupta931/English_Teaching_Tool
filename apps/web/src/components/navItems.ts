@@ -1,4 +1,4 @@
-import { AudioLines, BookX, BriefcaseBusiness, Dumbbell, GraduationCap, House, LayoutGrid, Link2, ListChecks, MessagesSquare, Sparkles, Target, Timer, User, type LucideIcon } from "lucide-react";
+import { AudioLines, BookX, BriefcaseBusiness, Dumbbell, GraduationCap, House, LayoutGrid, Link2, ListChecks, MessagesSquare, Settings, Sparkles, Target, Timer, User, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; hint: string; icon: LucideIcon; rail: boolean; bar: boolean };
 
@@ -19,6 +19,7 @@ export const NAV: NavItem[] = [
   { href: "/mistakes", label: "Mistakes", hint: "Review everything you got wrong", icon: BookX, rail: false, bar: false },
   { href: "/plans", label: "Plans", hint: "Upgrade and speaking time", icon: Sparkles, rail: false, bar: false },
   { href: "/me", label: "Me", hint: "Profile, plan and settings", icon: User, rail: true, bar: true },
+  { href: "/settings", label: "Settings", hint: "Mistakes, upgrade, language, appearance, sign out", icon: Settings, rail: false, bar: false },
 ];
 
 export const OPEN_PALETTE = "open-palette";
