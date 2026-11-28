@@ -8,6 +8,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 import httpx
 
+from app import hinglish, plivo_tts
 from app.errors import ProviderUnavailable
 
 DEVANAGARI = re.compile(r"[ऀ-ॿ]")  # Hindi (and Marathi, Nepali) script
@@ -50,7 +51,15 @@ def ssml(text: str) -> str:
 
 
 async def speak(text: str) -> str | None:
-    """Text-to-speech; returns base64 MP3, or None so callers can still show the text if TTS fails."""
+    """Text-to-speech; returns base64 MP3, or None so callers can still show the text if TTS fails.
+
+    TTS_PROVIDER=plivo (default) tries Plivo Koyal first and falls back to Azure if it fails; azure skips Plivo.
+    """
+    text = await hinglish.for_speech(text)  # Roman Hindi words in Hindi script, so both voices pronounce them as Hindi
+    if os.environ.get("TTS_PROVIDER", "plivo").strip().lower() == "plivo":
+        audio = await plivo_tts.speak(_client(), text)
+        if audio:
+            return audio
     try:
         key, region = _credentials()
     except ProviderUnavailable:

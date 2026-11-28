@@ -31,7 +31,7 @@ const OTHER_PAGES: Record<string, PageMark> = {
   "/practice": { tone: "mint", label: "Practice" },
   "/mistakes": { tone: "coral", label: "Review" },
   "/plans": { tone: "coral", label: "Account" },
-  "/admin": { tone: "link", label: "Admin" },
+  "/admin": { tone: "link", label: "Control panel" },
 };
 export function pageMark(path: string): PageMark | undefined {
   const a = ACTIVITIES.find((x) => path === x.href || path.startsWith(x.href + "/"));

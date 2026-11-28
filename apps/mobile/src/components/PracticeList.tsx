@@ -2,11 +2,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useFocusEffect } from "expo-router";
 import { BookX, Flame, Search, Sparkles, X, type LucideIcon } from "lucide-react-native";
 import { useCallback, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSession } from "@/lib/session";
 import { C, F, themed } from "@/lib/theme";
 import { ACTIVITIES, ActivityCard, groupTone, type Group } from "./Activities";
-import { Chip, H1, IconTile, Muted, RoundButton, Screen, s as ui } from "./ui";
+import { H1, IconTile, Muted, RoundButton, Screen, s as ui } from "./ui";
 
 export const TWISTER_LEVEL_KEY = "twister-unlocked";
 
@@ -55,11 +55,20 @@ export function PracticeList({ title, initial = "All" }: { title: string; initia
       </View>
 
       {query !== null && <TextInput autoFocus style={ui.input} value={query} onChangeText={setQuery} placeholder="Search practice" placeholderTextColor={C.muted} />}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
-        {(["All", "Speaking", "Games", "Tests"] as const).map((f) => (
-          <Chip key={f} text={f} tone={filter === f ? "mint" : "white"} onPress={() => setFilter(f)} style={{ paddingHorizontal: 16, paddingVertical: 9 }} />
-        ))}
-      </ScrollView>
+      <View style={s.segment} accessibilityRole="tablist">
+        {(["All", "Speaking", "Games", "Tests"] as const).map((f) => {
+          const on = filter === f;
+          const n = f === "All" ? ACTIVITIES.length : ACTIVITIES.filter((a) => a.group === f).length;
+          return (
+            <Pressable key={f} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={`${f}, ${n} activities`}
+              onPress={() => setFilter(f)} style={[s.segItem, on && s.segOn]}>
+              <Text selectable={false} numberOfLines={1} style={[s.segText, on && { color: C.ink }]}>
+                {f} <Text style={[s.segCount, on && { color: C.progress }]}>{n}</Text>
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
       {shown.length === 0 && <Muted style={{ textAlign: "center" }}>Nothing matches &quot;{query}&quot;.</Muted>}
       {GROUPS.filter((g) => shown.some((a) => a.group === g)).map((g) => {
@@ -106,4 +115,9 @@ const s = themed(() => StyleSheet.create({
   groupTitle: { fontFamily: F.bold, fontSize: 17, color: C.ink },
   count: { fontFamily: F.regular, fontSize: 14, color: C.muted },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  segment: { flexDirection: "row", backgroundColor: C.grey, borderRadius: 14, padding: 4 },
+  segItem: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 40, borderRadius: 10 },
+  segOn: { backgroundColor: C.bg, shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  segText: { fontFamily: F.semibold, fontSize: 13, color: C.muted },
+  segCount: { fontFamily: F.medium, fontSize: 12, color: C.muted },
 }));

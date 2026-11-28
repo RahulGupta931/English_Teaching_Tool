@@ -1,11 +1,12 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { ChevronLeft, ChevronRight, X, Zap, type LucideIcon } from "lucide-react-native";
+import { Check, ChevronLeft, ChevronRight, Lightbulb, Volume2, X, Zap, type LucideIcon } from "lucide-react-native";
 import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import type { Mistake } from "@/lib/api";
+import { playAudio } from "@/lib/audio";
 import { C, F, themed } from "@/lib/theme";
 
 type Kids = { children?: ReactNode };
@@ -124,7 +125,7 @@ export function Chip({ text, tone = "white", icon: I, onPress, style }: { text: 
   const body = (
     <View style={[s.chip, { backgroundColor: t.bg }, style]}>
       {I && <I size={14} color={t.fg} strokeWidth={2.2} />}
-      <Text style={[s.chipText, { color: t.fg }]}>{text}</Text>
+      <Text selectable={false} style={[s.chipText, { color: t.fg }]}>{text}</Text>
     </View>
   );
   return onPress ? <Pressable accessibilityRole="button" accessibilityLabel={text} onPress={onPress}>{body}</Pressable> : body;
@@ -226,14 +227,43 @@ export const XpChip = ({ xp, tone = "peach" }: { xp: number; tone?: "peach" | "m
 );
 
 const TYPE_LABEL: Record<string, string> = { grammar: "Grammar", vocabulary: "Vocabulary", phrasing: "Phrasing" };
-/** Struck-through original, correction in green, short explanation (page 7 "Fix these"). */
-export function MistakeCard({ m, hideType }: { m: Pick<Mistake, "type" | "original" | "correction"> & { explanation?: string }; hideType?: boolean }) {
+const SOURCE_LABEL: Record<string, string> = { roleplay: "Role-play", coach: "Coach", jam: "JAM", quiz: "Quiz", placement: "Placement" };
+/** One type colour, read at render time (the palette changes with the theme). */
+const typeTone = (t: string) => (t === "grammar" ? { bg: C.blueSoft, fg: C.blue } : t === "vocabulary" ? { bg: C.peachSoft, fg: C.purple } : { bg: C.mintTile, fg: C.onMint });
+
+/** A saved mistake: what you said, the better version (tap to hear it), and why. */
+export function MistakeCard({ m, hideType }: { m: Pick<Mistake, "type" | "original" | "correction"> & { explanation?: string; source?: string }; hideType?: boolean }) {
+  // Quiz mistakes are saved as "question → your answer": show the question on its own line.
+  const [question, said] = m.original.includes(" → ") ? m.original.split(" → ", 2) : [null, m.original];
+  const tone = typeTone(m.type);
   return (
-    <Card style={{ gap: 6 }}>
-      {!hideType && <Chip text={TYPE_LABEL[m.type] ?? m.type} tone="peach" style={{ alignSelf: "flex-start", marginBottom: 4 }} />}
-      <Text style={s.strike}>{m.original}</Text>
-      <Text style={s.fixed}>{m.correction}</Text>
-      {!!m.explanation && <Body style={{ color: C.muted }}>{m.explanation}</Body>}
+    <Card style={{ gap: 12, padding: 16, borderWidth: 1, borderColor: C.line }}>
+      {(!hideType || m.source) && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {!hideType && <Text style={[s.tag, { backgroundColor: tone.bg, color: tone.fg }]}>{TYPE_LABEL[m.type] ?? m.type}</Text>}
+          {m.source && <Text style={s.from}>From {SOURCE_LABEL[m.source] ?? m.source}</Text>}
+        </View>
+      )}
+      {question && <Text style={s.question}>{question}</Text>}
+      <View style={s.lines}>
+        <View style={s.line}>
+          <View style={[s.mark, { backgroundColor: C.redSoft }]}><X size={12} color={C.redText} strokeWidth={3} /></View>
+          <Text style={s.strike}>{said}</Text>
+        </View>
+        <View style={s.line}>
+          <View style={[s.mark, { backgroundColor: C.mintTile }]}><Check size={12} color={C.onMint} strokeWidth={3} /></View>
+          <Text style={[s.fixed, { flex: 1 }]}>{m.correction}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Hear "${m.correction}"`} hitSlop={10} onPress={() => playAudio(null, m.correction)} style={s.hear}>
+            <Volume2 size={16} color={C.progress} />
+          </Pressable>
+        </View>
+      </View>
+      {!!m.explanation && (
+        <View style={s.why}>
+          <Lightbulb size={15} color={C.purple} style={{ marginTop: 2 }} />
+          <Text style={s.whyText}>{m.explanation}</Text>
+        </View>
+      )}
     </Card>
   );
 }
@@ -279,7 +309,16 @@ export const s = themed(() => StyleSheet.create({
   rowLine: { borderTopWidth: 1, borderTopColor: C.line },
   stat: { flex: 1, borderRadius: 20, paddingVertical: 12, paddingHorizontal: 12, gap: 2 },
   statValue: { fontFamily: F.extrabold, fontSize: 24, color: C.ink, letterSpacing: -0.5 },
-  strike: { fontFamily: F.regular, fontSize: 14, color: C.muted, textDecorationLine: "line-through" },
-  fixed: { fontFamily: F.bold, fontSize: 16, color: C.green2 },
+  strike: { flex: 1, fontFamily: F.regular, fontSize: 14, lineHeight: 20, color: C.muted, textDecorationLine: "line-through" },
+  tag: { fontFamily: F.semibold, fontSize: 12, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, overflow: "hidden" },
+  from: { fontFamily: F.medium, fontSize: 12, color: C.muted },
+  question: { fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: C.ink },
+  lines: { gap: 10 },
+  line: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  mark: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", marginTop: 1 },
+  hear: { width: 32, height: 32, borderRadius: 16, backgroundColor: C.bg, alignItems: "center", justifyContent: "center", marginTop: -6 },
+  why: { flexDirection: "row", gap: 8, backgroundColor: C.bg, borderRadius: 12, padding: 12 },
+  whyText: { flex: 1, fontFamily: F.regular, fontSize: 13, lineHeight: 19, color: C.muted },
+  fixed: { fontFamily: F.bold, fontSize: 16, lineHeight: 22, color: C.green2 },
   input: { backgroundColor: C.surface, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontFamily: F.regular, fontSize: 16, color: C.ink },
 }));

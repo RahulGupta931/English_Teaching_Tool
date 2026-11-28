@@ -1,15 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { Check, LoaderCircle, LogOut, Search } from "lucide-react";
-import { Page, PageHeader, Tabs } from "@/components/ui";
+import { Activity, Check, ExternalLink, IndianRupee, LoaderCircle, LogOut, Search, ShoppingCart, Users, type LucideIcon } from "lucide-react";
+import { ButtonLink, IconTile, Page, PageHeader, Segmented, Tabs } from "@/components/ui";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { api, errorText } from "@/lib/api";
+import { API_URL, api, errorText } from "@/lib/api";
 
 type Plan = {
   id: number;
@@ -91,7 +91,9 @@ const EMPTY_PLAN = { name: "", price_inr: "", days: "", interviews: "", daily_mi
 export default function Admin() {
   const token = useAdminToken();
   const [password, setPassword] = useState("");
-  const [tab, setTab] = useState<"users" | "plans" | "payments">("users");
+  const [tab, setTab] = useState<"users" | "plans" | "payments" | "system">("users");
+  const [payFilter, setPayFilter] = useState<"all" | "paid" | "unpaid">("all");
+  const [loaded, setLoaded] = useState(false);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -106,8 +108,9 @@ export default function Admin() {
       try {
         return await api<T>(path, { ...init, headers: { "X-Admin-Token": token ?? "" } });
       } catch (e) {
-        if (errorText(e) === "Admin sign-in required.") saveToken(null);
-        throw e;
+        if (errorText(e) !== "Admin sign-in required.") throw e;
+        saveToken(null);
+        throw new Error("Your admin session ended. Sign in again."); // shown on the sign-in form, not mistaken for a failed login
       }
     },
     [token],
@@ -124,6 +127,7 @@ export default function Admin() {
         setUsers(u);
         setPlans(p);
         setPayments(pay);
+        setLoaded(true);
       })
       .catch((e) => setMessage(errorText(e)));
   }, [call, query, token, version]);
@@ -212,16 +216,29 @@ export default function Admin() {
   const listedPlans = plans.filter((p) => p.listed);
   const interviews = (n: number | null) => (n === null ? "Unlimited" : String(n));
   const status = (ok: boolean, yes: string, no: string) => <Badge variant={ok ? "default" : "secondary"}>{ok ? yes : no}</Badge>;
+  const shownPayments = payFilter === "all" ? payments : payments.filter((p) => (p.status === "paid") === (payFilter === "paid"));
 
   return (
     <Page>
       <PageHeader
-        title={tab === "users" ? "Users" : tab === "plans" ? "Plans" : "Payments"}
-        subtitle="Admin"
-        actions={<Button variant="secondary" onClick={() => saveToken(null)}><LogOut />Sign out</Button>}
+        title="Admin"
+        subtitle="Manage learners, plans and payments."
+        actions={<>
+          <ButtonLink href="/" variant="ghost" icon={ExternalLink}>View site</ButtonLink>
+          <Button variant="secondary" onClick={() => saveToken(null)}><LogOut />Sign out</Button>
+        </>}
       />
+
+      {/* Totals come from the plans list (users per plan) and every payment, so search doesn't change them. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat icon={Users} tone="mint" label="Learners" value={plans.reduce((n, p) => n + p.users, 0)} />
+        <Stat icon={Check} tone="mint" label="On a paid plan" value={plans.filter((p) => p.price_inr > 0).reduce((n, p) => n + p.users, 0)} />
+        <Stat icon={IndianRupee} tone="link" label="Revenue" value={`₹${(payments.filter((p) => p.status === "paid").reduce((n, p) => n + p.amount_paise, 0) / 100).toLocaleString("en-IN")}`} />
+        <Stat icon={ShoppingCart} tone="coral" label="Checkouts not finished" value={payments.filter((p) => p.status !== "paid").length} />
+      </div>
+
       <Tabs label="Admin sections" value={tab} onChange={setTab}
-        tabs={[{ value: "users", label: `Users (${users.length})` }, { value: "plans", label: `Plans (${plans.length})` }, { value: "payments", label: `Payments (${payments.length})` }]} />
+        tabs={[{ value: "users", label: `Users (${users.length})` }, { value: "plans", label: `Plans (${plans.length})` }, { value: "payments", label: `Payments (${payments.length})` }, { value: "system", label: "System" }]} />
       <p role="status" aria-live="polite" className="text-sm font-medium text-fg-2 empty:hidden">{message}</p>
 
       {tab === "users" ? (
@@ -335,10 +352,16 @@ export default function Admin() {
             </form>
           </Card>
         </>
+      ) : tab === "system" ? (
+        <SystemStatus databaseOk={loaded} />
       ) : (
         <Card>
           <CardHeader>
-            <CardDescription>&quot;Not paid&quot; means checkout was opened but not completed. Refunds are made from the Razorpay dashboard.</CardDescription>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardDescription>&quot;Not paid&quot; means checkout was opened but not completed. Refunds are made from the Razorpay dashboard.</CardDescription>
+              <Segmented label="Show payments" value={payFilter} onChange={setPayFilter}
+                options={[{ value: "all", label: "All" }, { value: "paid", label: "Paid" }, { value: "unpaid", label: "Not paid" }]} />
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
@@ -349,7 +372,7 @@ export default function Admin() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments.map((p) => (
+                {shownPayments.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell>{(p.paid_at ?? p.created_at).slice(0, 16)}</TableCell>
                     <TableCell>
@@ -364,13 +387,79 @@ export default function Admin() {
                     <TableCell className="font-mono text-xs">{p.razorpay_order_id}</TableCell>
                   </TableRow>
                 ))}
-                {payments.length === 0 && <TableRow><TableCell colSpan={8} className="py-8 text-center text-fg-2">No payments yet.</TableCell></TableRow>}
+                {shownPayments.length === 0 && <TableRow><TableCell colSpan={8} className="py-8 text-center text-fg-2">{payments.length ? "No payments match this filter." : "No payments yet."}</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       )}
     </Page>
+  );
+}
+
+function Stat({ icon, tone, label, value }: { icon: LucideIcon; tone: "mint" | "coral" | "link"; label: string; value: React.ReactNode }) {
+  return (
+    <Card className="flex-row items-center gap-3 p-4 sm:p-4">
+      <IconTile icon={icon} tone={tone} size={40} />
+      <div className="flex min-w-0 flex-col">
+        <span className="truncate text-xs text-fg-2">{label}</span>
+        <span className="text-xl font-bold tabular-nums">{value}</span>
+      </div>
+    </Card>
+  );
+}
+
+/** Which API this web build talks to, and whether it answers. Addresses are fixed at build time, so they're changed in deploy settings, not here. */
+function SystemStatus({ databaseOk }: { databaseOk: boolean }) {
+  const [health, setHealth] = useState<{ ok: boolean; ms: number } | null>(null);
+  const [run, setRun] = useState(0); // bump to check again
+  useEffect(() => {
+    let live = true;
+    const t = performance.now();
+    fetch(`${API_URL}/v1/health`).then((r) => r.ok, () => false)
+      .then((ok) => live && setHealth({ ok, ms: Math.round(performance.now() - t) }));
+    return () => { live = false; };
+  }, [run]);
+
+  const rows: [string, React.ReactNode][] = [
+    ["API address (this web build)", <code key="a" className="break-all">{API_URL}</code>],
+    ["API health", health === null ? "Checking…" : <Badge key="h" variant={health.ok ? "default" : "destructive"}>{health.ok ? `Up · ${health.ms} ms` : "Not reachable"}</Badge>],
+    ["Database", <Badge key="d" variant={databaseOk ? "default" : "destructive"}>{databaseOk ? "Connected" : "Not answering"}</Badge>],
+  ];
+  return (
+    <div className="grid items-start gap-5 lg:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2"><Activity className="size-5 text-accent-fg" aria-hidden />Status</CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => { setHealth(null); setRun((n) => n + 1); }}>Check again</Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <dl className="flex flex-col divide-y divide-line">
+            {rows.map(([k, v]) => (
+              <div key={k} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+                <dt className="text-fg-2">{k}</dt><dd className="font-medium">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Changing settings</CardTitle>
+          <CardDescription>For safety these can&apos;t be changed from this page: app addresses are built into each app, and API keys are secrets.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="flex flex-col gap-3 text-sm">
+            <li><strong>Web app API address:</strong> <code>NEXT_PUBLIC_API_URL</code> in the web project&apos;s Vercel settings (or <code>apps/web/.env.local</code>), then redeploy.</li>
+            <li><strong>Mobile API address:</strong> <code>EXPO_PUBLIC_API_URL</code> in <code>apps/mobile/.env</code> for development and <code>apps/mobile/eas.json</code> for APK builds, then rebuild.</li>
+            <li><strong>API keys and database:</strong> <code>DATABASE_URL</code>, OpenAI, Azure, Razorpay and Supabase keys in the API project&apos;s Vercel settings, then redeploy.</li>
+            <li><strong>Plans and prices:</strong> on the Plans tab, no redeploy needed.</li>
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

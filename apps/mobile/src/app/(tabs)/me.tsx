@@ -97,17 +97,20 @@ export default function MeScreen() {
   return (
     <Screen scroll style={{ paddingBottom: 120, gap: 18 }} onRefresh={async () => { loadPlans(); await refresh(); }}>
       {/* Profile header, as on web */}
-      <Card style={{ flexDirection: "row", alignItems: "center", gap: 14, marginTop: 8 }}>
-        <View style={s.avatar}><Text style={s.avatarText}>{user.name[0]?.toUpperCase()}</Text></View>
-        <View style={{ flex: 1, gap: 6 }}>
-          <Text style={s.name} numberOfLines={2}>{user.name}</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-            {user.level && <Chip text={LEVEL[user.level] ?? user.level} tone="mint" />}
-            <Chip text={`${user.plan.name} plan`} tone="grey" />
+      <Card style={{ gap: 14, marginTop: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+          <View style={s.avatar}><Text style={s.avatarText}>{user.name[0]?.toUpperCase()}</Text></View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={s.name} numberOfLines={1}>{user.name}</Text>
+            {(user.email ?? user.phone) && <Muted style={{ fontSize: 13 }} numberOfLines={1}>{user.email ?? user.phone}</Muted>}
           </View>
-          {(user.email ?? user.phone) && <Muted style={{ fontSize: 12 }} numberOfLines={1}>{user.email ?? user.phone}</Muted>}
+          <RoundButton icon={Settings} label="Settings" onPress={() => router.push("/settings")} />
         </View>
-        <View style={{ alignSelf: "flex-start" }}><RoundButton icon={Settings} label="Settings" onPress={() => router.push("/settings")} /></View>
+        {/* Tags get their own full-width row, so they sit side by side instead of squeezing under the name. */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {user.level && <Chip icon={Zap} text={LEVEL[user.level] ?? user.level} tone="mint" />}
+          <Chip icon={Briefcase} text={`${user.plan.name} plan`} tone="grey" />
+        </View>
       </Card>
 
       <View style={s.statGrid}>
@@ -237,7 +240,7 @@ const s = themed(() => StyleSheet.create({
   onDarkSmall: { fontFamily: F.medium, fontSize: 11, color: C.onDarkMuted },
   danger: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, minHeight: 40, borderRadius: 999, backgroundColor: C.redSoft },
   dangerText: { fontFamily: F.bold, fontSize: 14, color: C.redText },
-  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: C.green, alignItems: "center", justifyContent: "center" },
-  avatarText: { fontFamily: F.bold, fontSize: 26, color: C.mint },
-  name: { fontFamily: F.extrabold, fontSize: 23, lineHeight: 26, letterSpacing: -0.8, color: C.ink },
+  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.green, alignItems: "center", justifyContent: "center" },
+  avatarText: { fontFamily: F.bold, fontSize: 22, color: C.mint },
+  name: { fontFamily: F.extrabold, fontSize: 21, lineHeight: 26, letterSpacing: -0.6, color: C.ink },
 }));

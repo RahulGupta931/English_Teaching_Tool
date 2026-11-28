@@ -1,9 +1,9 @@
-import { router, useFocusEffect } from "expo-router";
-import { Check, GraduationCap, LogOut } from "lucide-react-native";
+import { useFocusEffect } from "expo-router";
+import { Check, LogOut } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Checkout, type CheckoutResult, type Order } from "@/components/Checkout";
-import { Body, Button, Card, Chip, ErrorText, GreenCard, H2, Header, MistakeCard, Muted, Screen, Title } from "@/components/ui";
+import { Body, Button, Card, Chip, ErrorText, GreenCard, H2, Header, Muted, Screen, Title } from "@/components/ui";
 import { api, errorText, postJson } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
@@ -81,25 +81,12 @@ export default function Settings() {
     }
   }
 
-  const mistakeCount = new Set(me.mistakes.map((m) => m.original.toLowerCase())).size;
-
   return (
     <Screen scroll style={{ paddingBottom: 40, gap: 18 }} onRefresh={async () => { loadPlans(); await refresh(); }}>
       <Header title="Settings" />
 
       {message ? <Body style={{ color: C.progress }}>{message}</Body> : null}
       <ErrorText>{error}</ErrorText>
-
-      {mistakeCount > 0 && (
-        <Card style={{ gap: 12 }}>
-          <View style={s.between}>
-            <Text style={s.cardTitle}>Mistakes to review</Text>
-            <Text style={s.link} onPress={() => router.push("/mistakes")} accessibilityRole="link">See all {mistakeCount}</Text>
-          </View>
-          {me.mistakes.slice(0, 2).map((m, i) => <MistakeCard key={i} m={m} />)}
-          <Button title="Fix them with Mistake Coach" icon={GraduationCap} tone="grey" small style={{ alignSelf: "flex-start" }} onPress={() => router.push("/coach")} />
-        </Card>
-      )}
 
       <H2>Upgrade your practice</H2>
       {!plans ? <ActivityIndicator color={C.green} /> : plans.plans.length === 0 ? <Muted>No plans to buy right now.</Muted> : (
@@ -184,9 +171,6 @@ function PlanCard({ plan, featured, busy, onBuy }: { plan: Plan; featured: boole
 }
 
 const s = themed(() => StyleSheet.create({
-  between: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  cardTitle: { fontFamily: F.bold, fontSize: 17, color: C.ink },
-  link: { fontFamily: F.bold, fontSize: 14, color: C.blue },
   plan: { width: 320, gap: 12 },
   price: { fontFamily: F.extrabold, fontSize: 30, letterSpacing: -1 },
   rowLine: { borderTopWidth: 1, borderTopColor: C.line, paddingTop: 14 },

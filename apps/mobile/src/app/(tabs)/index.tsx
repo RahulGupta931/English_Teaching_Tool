@@ -126,7 +126,7 @@ export default function Home() {
         ) : (
           <>
             {mistakes.slice(0, 2).map((m, i) => <MistakeCard key={i} m={m} />)}
-            <Button title="Fix them with Mistake Coach" icon={GraduationCap} tone="grey" small style={{ alignSelf: "flex-start" }} onPress={() => router.push("/coach")} />
+            <Button title="Fix them with Mistake Coach" icon={GraduationCap} tone="mint" small style={{ alignSelf: "flex-start" }} onPress={() => router.push("/coach")} />
           </>
         )}
       </Card>

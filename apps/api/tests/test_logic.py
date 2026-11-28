@@ -89,6 +89,62 @@ def test_shared_audio_generated_once(monkeypatch):
     assert calls == ["apple"]
 
 
+def test_hinglish_words_spoken_in_hindi_script():
+    from app.hinglish import by_list
+    assert by_list("Main theek hoon, but kal baat karte hain.") == "मैं ठीक हूँ, but कल बात करते हैं."
+    assert by_list("Mai aaj busy hoon! Aage chalo.") == "मैं आज busy हूँ! आगे चलो."
+    assert by_list("The main idea is clear.") == "The main idea is clear."  # one match only: English left alone
+    assert by_list("Great job! Try the past tense.") == "Great job! Try the past tense."
+
+
+def test_hinglish_ai_uses_context_with_word_list_fallback(monkeypatch):
+    import asyncio
+    from app import hinglish, llm
+    from app.errors import ProviderFailed
+    reply = {"text": "मुझे थोड़ा पानी दो, but I do yoga."}
+
+    async def chat(system, messages):
+        if isinstance(reply["text"], Exception):
+            raise reply["text"]
+        return reply["text"]
+    monkeypatch.setattr(llm, "chat", chat)
+    speak = lambda t: asyncio.run(hinglish.for_speech(t))
+    assert speak("Mujhe thoda paani do, but I do yoga.") == "मुझे थोड़ा पानी दो, but I do yoga."  # AI: Hindi do vs English do
+    assert speak("The main idea is clear.") == "The main idea is clear."  # English: no AI call needed
+    reply["text"] = ProviderFailed("down")
+    assert speak("Aage chalo, bahut accha.") == "आगे चलो, बहुत अच्छा."  # AI down: word list
+    reply["text"] = "Let's go ahead, very good."  # AI translated instead: rejected, word list used
+    assert speak("Aage chalo, bahut accha.") == "आगे चलो, बहुत अच्छा."
+
+
+def test_tts_provider_switch_and_azure_fallback(monkeypatch):
+    import asyncio
+    import base64
+    import json
+    import httpx
+    hits, plivo_ok = [], [True]
+
+    def handler(request):
+        if "plivo" in request.url.host:
+            hits.append(("plivo", json.loads(request.content)["voice_id"]))
+            return httpx.Response(200 if plivo_ok[0] else 500, content=b"PLIVO")
+        hits.append(("azure", None))
+        return httpx.Response(200, content=b"AZURE")
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    monkeypatch.setattr(azure_speech, "_client", lambda: client)
+    for k, v in {"PLIVO_AUTH_ID": "id", "PLIVO_AUTH_TOKEN": "t", "AZURE_SPEECH_KEY": "k", "AZURE_SPEECH_REGION": "r"}.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.delenv("TTS_PROVIDER", raising=False)
+    monkeypatch.delenv("PLIVO_TTS_VOICE_HINDI", raising=False)
+    said = lambda text: base64.b64decode(asyncio.run(azure_speech.speak(text)))
+    assert said("आज का lesson") == b"PLIVO" and hits == [("plivo", "6uWzc4xFj31t4jNJUaED")]  # default plivo, Hindi voice
+    plivo_ok[0] = False
+    assert said("Hi") == b"AZURE"  # Plivo failed: Azure fallback
+    hits.clear()
+    monkeypatch.setenv("TTS_PROVIDER", "azure")
+    assert said("Hi") == b"AZURE" and hits == [("azure", None)]  # azure skips Plivo
+
+
 def test_hindi_text_uses_a_hindi_voice(monkeypatch):
     monkeypatch.setenv("AZURE_TTS_VOICE", "en-IN-AartiNeural")
     monkeypatch.delenv("AZURE_TTS_VOICE_HINDI", raising=False)
