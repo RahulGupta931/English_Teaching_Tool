@@ -112,9 +112,9 @@ async def _open(scenario: str, user: dict, context: str | None = None) -> dict:
     opening = llm.plain_speech(await llm.chat(_system(scenario, user, context),
                                               [{"role": "user", "content": "(The learner joins. Greet them and begin.)"}]))
     with db.connect() as con:
-        cur = con.execute("insert into roleplay_sessions (user_id, scenario, messages, context) values (?, ?, ?, ?)",
-                          (user["id"], scenario, json.dumps([{"role": "assistant", "content": opening}]), context))
-    return {"session_id": cur.lastrowid, "reply": opening, "audio": await azure_speech.speak_for(user, opening), "turns_left": MAX_TURNS}
+        session_id = con.execute("insert into roleplay_sessions (user_id, scenario, messages, context) values (?, ?, ?, ?) returning id",
+                          (user["id"], scenario, json.dumps([{"role": "assistant", "content": opening}]), context)).fetchone()["id"]
+    return {"session_id": session_id, "reply": opening, "audio": await azure_speech.speak_for(user, opening), "turns_left": MAX_TURNS}
 
 
 @router.post("/roleplay")

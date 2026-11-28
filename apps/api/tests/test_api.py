@@ -422,7 +422,7 @@ def buy(client, headers, razorpay, plan_id, payment_id="pay_1"):
 def add_plan(name, price, days=30, interviews=5):
     with db.connect() as con:
         return con.execute("insert into plans (name, price_inr, days, interviews, daily_minutes, azure_voice) "
-                           "values (?, ?, ?, ?, 15, 1)", (name, price, days, interviews)).lastrowid
+                           "values (?, ?, ?, ?, 15, 1) returning id", (name, price, days, interviews)).fetchone()["id"]
 
 
 def test_buying_from_free_starts_today_at_the_database_price(client, login, razorpay):

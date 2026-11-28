@@ -79,9 +79,9 @@ def _finish(con, row, user: dict, score: int) -> None:
 async def start(user: dict = Depends(current_user)):
     first = random.choice(AI_WORDS)
     with db.connect() as con:
-        cur = con.execute("insert into word_chain_games (user_id, words, turn_started) values (?, ?, ?)",
-                          (user["id"], json.dumps([{"word": first, "by": "ai", "points": 0}]), time.time()))
-        row = _row(con, cur.lastrowid, user["id"])
+        game_id = con.execute("insert into word_chain_games (user_id, words, turn_started) values (?, ?, ?) returning id",
+                          (user["id"], json.dumps([{"word": first, "by": "ai", "points": 0}]), time.time())).fetchone()["id"]
+        row = _row(con, game_id, user["id"])
     return _state(row, user, await azure_speech.speak_for(user, first, shared=True))
 
 

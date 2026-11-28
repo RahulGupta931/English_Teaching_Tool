@@ -1,11 +1,11 @@
 import logging
 import os
 import re
-import sqlite3
 import unicodedata
 from datetime import date, timedelta
 from typing import Literal
 
+import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
@@ -90,15 +90,15 @@ async def create_profile(body: Profile, claims: dict = Depends(auth_claims)):
         if con.execute("select 1 from users where phone = ?", (phone,)).fetchone():
             raise HTTPException(409, "This mobile number is already registered with another account.")
         try:
-            cur = con.execute(
+            user_id = con.execute(
                 "insert into users (auth_id, email, phone, name, birth_year, parental_consent, explain_lang) "
-                "values (?, ?, ?, ?, ?, ?, ?)",
+                "values (?, ?, ?, ?, ?, ?, ?) returning id",
                 (claims["sub"], claims.get("email"), phone, name, body.birth_year, int(body.parental_consent),
                  body.explain_lang),
-            )
-        except sqlite3.IntegrityError:  # the same check, lost to a simultaneous sign-up
+            ).fetchone()["id"]
+        except psycopg.IntegrityError:  # the same check, lost to a simultaneous sign-up
             raise HTTPException(409, "This mobile number is already registered with another account.")
-        user = db.load_plan(con, dict(con.execute("select * from users where id = ?", (cur.lastrowid,)).fetchone()))
+        user = db.load_plan(con, dict(con.execute("select * from users where id = ?", (user_id,)).fetchone()))
     return {"user": public(user)}
 
 

@@ -1,12 +1,15 @@
 import io
 import math
+import os
 import time
 import zlib
+from pathlib import Path
 import wave
 from array import array
 
 import jwt
 import pytest
+from psycopg.conninfo import make_conninfo
 from fastapi.testclient import TestClient
 
 from app import auth, azure_speech, daily_word, db, llm
@@ -62,9 +65,29 @@ def make_token(sub="user-asha", email="asha@example.com", secret=JWT_SECRET, **c
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
+def _database_url() -> str:
+    """DATABASE_URL from the environment or apps/api/.env."""
+    if os.environ.get("DATABASE_URL"):
+        return os.environ["DATABASE_URL"]
+    env = Path(__file__).parent.parent / ".env"
+    for line in env.read_text(encoding="utf-8").splitlines() if env.exists() else []:
+        if line.startswith("DATABASE_URL="):
+            return line.split("=", 1)[1].strip()
+    raise RuntimeError("Set DATABASE_URL (apps/api/.env) to run the tests.")
+
+
+# Tests run in their own schema, so they never touch the app's tables in "public".
+TEST_SCHEMA = "api_test"
+TEST_DATABASE_URL = make_conninfo(_database_url(), options=f"-c search_path={TEST_SCHEMA}")
+
+
 @pytest.fixture(autouse=True)
-def fresh_db(tmp_path, monkeypatch):
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+def fresh_db(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", TEST_DATABASE_URL)
+    with db.connect() as con:
+        con.execute(f"create schema if not exists {TEST_SCHEMA}")
+        assert con.execute("select current_schema() as s").fetchone()["s"] == TEST_SCHEMA  # never wipe "public"
+        con.execute(f"drop schema if exists {TEST_SCHEMA} cascade; create schema {TEST_SCHEMA}")
     monkeypatch.setenv("SUPABASE_URL", SUPABASE_URL)
     monkeypatch.setenv("SUPABASE_JWT_SECRET", JWT_SECRET)
     monkeypatch.delenv("SUPABASE_SECRET_KEY", raising=False)

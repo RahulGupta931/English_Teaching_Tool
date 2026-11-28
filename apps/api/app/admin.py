@@ -5,10 +5,10 @@ Separate from learner login (which is name-only): admins sign in with ADMIN_PASS
 
 import os
 import secrets
-import sqlite3
 import time
 from collections import deque
 
+import psycopg
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 
@@ -75,8 +75,8 @@ def users(q: str = ""):
     with db.connect() as con:
         rows = [dict(r) for r in con.execute(
             "select id, name, email, phone, birth_year, level, xp, last_active, created_at, plan_id, plan_started, "
-            "plan_expires, interviews_used from users where name like ?1 or email like ?1 or phone like ?1 "
-            "order by id desc limit 200", (f"%{q.strip()}%",))]
+            "plan_expires, interviews_used from users where name ilike ? or email ilike ? or phone ilike ? "
+            "order by id desc limit 200", (f"%{q.strip()}%",) * 3)]
         out = []
         for row in rows:
             user = db.load_plan(con, row)  # also moves expired plans back to Free
@@ -116,13 +116,13 @@ def plans():
 def create_plan(body: NewPlan):
     try:
         with db.connect() as con:
-            cur = con.execute(
-                "insert into plans (name, price_inr, days, interviews, daily_minutes, azure_voice) values (?, ?, ?, ?, ?, ?)",
+            plan_id = con.execute(
+                "insert into plans (name, price_inr, days, interviews, daily_minutes, azure_voice) values (?, ?, ?, ?, ?, ?) returning id",
                 (" ".join(body.name.split()), body.price_inr, body.days, body.interviews, body.daily_minutes,
-                 int(body.azure_voice)))
-    except sqlite3.IntegrityError:
+                 int(body.azure_voice))).fetchone()["id"]
+    except psycopg.IntegrityError:
         raise HTTPException(409, "A plan with that name already exists.")
-    return {"id": cur.lastrowid}
+    return {"id": plan_id}
 
 
 @router.post("/plans/{plan_id}/listed", dependencies=[Depends(require_admin)])

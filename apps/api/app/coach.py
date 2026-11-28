@@ -84,9 +84,9 @@ async def start(body: Start, user: dict = Depends(current_user)):
         f"(The learner, {user['name']}, joins. Greet them briefly, say you will practise {len(mistakes)} of their "
         "recent mistakes together, and start with the first one.)")}]))
     with db.connect() as con:
-        cur = con.execute("insert into roleplay_sessions (user_id, scenario, messages, context) values (?, 'coach', ?, ?)",
-                          (user["id"], json.dumps([{"role": "assistant", "content": opening}]), json.dumps(context)))
-    return {"session_id": cur.lastrowid, "reply": opening, "audio": await azure_speech.speak_for(user, opening),
+        session_id = con.execute("insert into roleplay_sessions (user_id, scenario, messages, context) values (?, 'coach', ?, ?) returning id",
+                          (user["id"], json.dumps([{"role": "assistant", "content": opening}]), json.dumps(context))).fetchone()["id"]
+    return {"session_id": session_id, "reply": opening, "audio": await azure_speech.speak_for(user, opening),
             "turns_left": MAX_TURNS, "language": context["lang"], "mistakes": len(mistakes)}
 
 

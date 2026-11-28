@@ -91,13 +91,13 @@ async def pool() -> list[dict]:
     """Every twister so far, easiest (shortest) first. The first visit each day adds the AI's new ones."""
     day = db.today().isoformat()
     with db.connect() as con:
-        con.executemany("insert or ignore into twisters (text, added) values (?, 'builtin')", [(t,) for t in TWISTERS])
+        con.executemany("insert into twisters (text, added) values (?, 'builtin') on conflict do nothing", [(t,) for t in TWISTERS])
         added_today = con.execute("select 1 from twisters where added = ?", (day,)).fetchone()
     if not added_today:
         # If the AI is down nothing is added, and the next visit tries again.
         new = await _write_twisters()
         with db.connect() as con:
-            con.executemany("insert or ignore into twisters (text, added) values (?, ?)", [(t, day) for t in new])
+            con.executemany("insert into twisters (text, added) values (?, ?) on conflict do nothing", [(t, day) for t in new])
     with db.connect() as con:
         rows = [dict(r) for r in con.execute("select id, text from twisters")]
     return sorted(rows, key=lambda r: (len(words_of(r["text"])), r["id"]))

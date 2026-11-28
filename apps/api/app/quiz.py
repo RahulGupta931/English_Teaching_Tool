@@ -239,8 +239,9 @@ async def start(user: dict = Depends(current_user)):
     random.shuffle(questions)
     questions += vocab  # vocabulary round at the end
     with db.connect() as con:
-        cur = con.execute("insert into quiz_sessions (user_id, questions) values (?, ?)", (user["id"], json.dumps(questions)))
-    return {"id": cur.lastrowid, "questions": [_public(q) for q in questions]}
+        quiz_id = con.execute("insert into quiz_sessions (user_id, questions) values (?, ?) returning id",
+                             (user["id"], json.dumps(questions))).fetchone()["id"]
+    return {"id": quiz_id, "questions": [_public(q) for q in questions]}
 
 
 @router.post("/quiz/{quiz_id}")
